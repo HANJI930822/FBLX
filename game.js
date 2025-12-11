@@ -357,10 +357,10 @@ async function simulateFight(originalEnemy, enemyId) {
     if (player.hp > 0) {
         player.money += originalEnemy.reward;
         player.stats.money_earned += originalEnemy.reward;
-        player.stats.fights_won++;
 
+        player.stats.fights_won++;
         if (player.daily_progress) {
-        player.daily_progress.fights_won++;
+        player.daily_progress.fights_won = (player.daily_progress.fights_won || 0) + 1;
         checkDailyChallenges();
     }
     checkMainQuests();
@@ -509,9 +509,10 @@ function checkSurvivalStatus(hoursPassed) {
 function renderJobs() {
     const job = jobData[player.job];
     if (job) {
+        const currentSalary = getCurrentJobSalary();
         document.getElementById('current-job-name').innerText = job.name;
         document.getElementById('current-job-desc').innerText = job.desc;
-        document.getElementById('current-job-salary').innerText = `$${job.salary}`;
+        document.getElementById('current-job-salary').innerText = `$${currentSalary} (Lv.${player.level})`;
         document.getElementById('job-title').innerText = `(${job.name})`;
     }
 }
@@ -522,13 +523,15 @@ function work() {
 
     if (player.energy < gameConfig.workCost) { log("體力不足！", "fail"); return; }
     
+    const currentSalary = getCurrentJobSalary();
     player.energy -= gameConfig.workCost;
-    player.money += job.salary;
-    player.stats.times_worked++; 
-    player.stats.money_earned += job.salary;
+    player.money += currentSalary;
+     player.stats.times_worked++;
+    player.stats.money_earned += currentSalary;
+
     checkAchievements(); 
     if (player.daily_progress) {
-        player.daily_progress.work_count++;
+        player.daily_progress.work_count = (player.daily_progress.work_count || 0) + 1;
         checkDailyChallenges();
     }
     checkMainQuests();
@@ -536,16 +539,18 @@ function work() {
     passTime(gameConfig.workTime);
     
     gainExp(2); 
-    log(`工作完成！獲得薪水 $${job.salary}`, "success");
+     log(`工作完成！獲得薪水 $${currentSalary} (Lv.${player.level})`, "success");
     updateUI();
 }
 
 function train(stat) {
     if (player.hp <= 0) { log("在醫院無法訓練！", "fail"); return; }
     if (player.daily_progress) {
-        player.daily_progress.train_count++;
-        checkDailyChallenges();
-    }
+    player.daily_progress.train_count = (player.daily_progress.train_count || 0) + 1;
+    if (stat === 'strength') player.daily_progress.train_str = (player.daily_progress.train_str || 0) + 1;
+    if (stat === 'speed') player.daily_progress.train_spd = (player.daily_progress.train_spd || 0) + 1;
+    checkDailyChallenges();
+}
     if (player.energy >= gameConfig.trainCost) {
         player.energy -= gameConfig.trainCost;
         let gain = 1 + Math.floor(player[stat] * 0.01); 
@@ -583,7 +588,8 @@ function commitCrime(crimeId) {
                  showToast('神偷');
                  log(`🏆 成就解鎖：神偷`, "success");
             }
-        } else { 
+        } else {
+            if (player.daily_progress) player.daily_progress.crime_fails++; 
             log(`犯罪失敗：${crime.failMsg}`, "fail"); 
         }
         
@@ -1055,7 +1061,17 @@ function getPlayerAttack() {
     }
     return player.strength + weaponDmg;
 }
-
+function getCurrentJobSalary() {
+    const job = jobData[player.job];
+    if (!job) return 0;
+    
+    // ★ 基礎薪資 + 等級加成
+    const baseSalary = job.salary;
+    const growth = job.salary_growth || 0;
+    const levelBonus = growth * (player.level - 1);
+    
+    return Math.floor(baseSalary + levelBonus);
+}
 function getPlayerDefense() {
     let armorDef = 0;
     if (player.armor && itemData[player.armor]) {
@@ -1335,7 +1351,10 @@ function showPanel(panelId) {
 
 
 function gainExp(amount) {
+    const oldLevel = player.level;
+
     player.exp += amount;
+    
     while (player.exp >= player.max_exp) {
         player.level++;
         player.exp -= player.max_exp;
@@ -1345,7 +1364,10 @@ function gainExp(amount) {
         player.strength += 2;
         player.speed += 2;
         player.dexterity += 1; // ★ 新增：升級加靈敏度
-        
+        if (player.daily_progress && player.level > oldLevel) {
+            player.daily_progress.level_ups = (player.daily_progress.level_ups || 0) + 1;
+            console.log(`每日成就：升級次數 +1，現在 ${player.daily_progress.level_ups} 次`);
+        }
         log(`🎉 升級了！現在等級 ${player.level}！(全屬性提升)`, "success");
     }
     updateUI(); 
@@ -1359,7 +1381,6 @@ function updateUI() {
     const job = jobData[player.job];
     const jobTitle = document.getElementById('job-title');
     if (jobTitle) {
-        const job = jobData[player.job];
         let text = job ? `(${job.name})` : '';
         if (player.title) {
             text = `${player.title} ${text}`;
@@ -1456,12 +1477,22 @@ function generateDailyChallenges() {
     const shuffled = [...dailyChallengePool].sort(() => Math.random() - 0.5);
     player.daily_challenges = shuffled.slice(0, 3).map(c => c.id);
     player.daily_progress = {
-        train_count: 0,
+         train_count: 0,
         work_count: 0,
         fights_won: 0,
         crimes_count: 0,
         food_eaten: 0,
-        items_bought: 0
+        items_bought: 0,
+        money_earned: 0,
+        money_spent: 0,
+        defeated_tough_enemy: 0,
+        win_streak: 0,
+        crime_fails: 0,
+        train_str: 0,
+        train_spd: 0,
+        level_ups: 0,
+        early_activity: false,
+        late_activity: false
     };
     player.daily_completed = [];
     player.last_daily_reset = player.day;

@@ -79,6 +79,7 @@ const jobData = {
         startBonus: { 
             money: 0, 
             max_hp: 100, // 血量翻倍
+            salary_growth: 10,
             defense: 5,  // 皮糙肉厚
             speed: -5,   // 長期營養不良，跑不快
             desc: "最大生命+100, 防禦+5, 速度-5" 
@@ -90,6 +91,7 @@ const jobData = {
         startBonus: {
             max_hunger: 50, // 飢餓上限提升
             max_thirst: 50, // 口渴上限提升
+            salary_growth: 15,
             dexterity: 10,  // 翻找東西很靈活
             money: 100,
             desc: "飢餓/口渴上限+50, 靈巧+10, 存款$100"
@@ -104,6 +106,7 @@ const jobData = {
             money: 800, 
             strength: 5, 
             speed: 5, 
+            salary_growth: 15,
             max_energy: 20, // 體力較好
             desc: "存款$800, 全屬性微幅提升, 體力上限+20" 
         }
@@ -115,6 +118,7 @@ const jobData = {
             money: 2000,
             strength: -5,
             dexterity: -5,
+            salary_growth: 20,
             max_energy: -20, // 容易累
             desc: "存款$2000, 力量-5, 靈巧-5, 體力上限-20"
         }
@@ -128,6 +132,7 @@ const jobData = {
             strength: 25, 
             defense: 5,
             dexterity: -10, // 動作大開大闔，不靈活
+            salary_growth: 30,
             weapon: 'wooden_bat',
             desc: "力量+25, 防禦+5, 靈巧-10, 自帶球棒" 
         }
@@ -139,6 +144,7 @@ const jobData = {
             max_hp: 150, 
             defense: 15, 
             strength: 10, 
+            salary_growth: 30,
             speed: -15, // 非常慢
             desc: "最大生命+150, 防禦+15, 速度-15" 
         }
@@ -151,6 +157,7 @@ const jobData = {
             speed: 20, 
             dexterity: 20,
             max_hp: -30, // 身體素質其實一般，被打很痛
+            salary_growth: 60,
             defense: -5,
             weapon: 'switchblade',
             desc: "攻/速/靈+20, 最大生命-30, 自帶彈簧刀" 
@@ -164,6 +171,7 @@ const jobData = {
         startBonus: { 
             speed: 40, 
             dexterity: 20, 
+            salary_growth: 5,
             strength: -10, // 手無縛雞之力
             accessory: 'sneakers', // 自帶鞋子
             desc: "速度+40, 靈巧+20, 力量-10, 自帶運動鞋" 
@@ -175,10 +183,11 @@ const jobData = {
         startBonus: { 
             money: 5000, 
             strength: -10, 
+            salary_growth: 0,
             speed: -10, 
             max_hp: -20, 
             defense: -5,
-            desc: "存款$5000, 全屬性大幅降低 (弱雞)" 
+            desc: "存款$5000，但是一條弱雞" 
         }
     },
     'quack_doc': { 
@@ -187,8 +196,10 @@ const jobData = {
         startBonus: { 
             dexterity: 30, // 手術快
             strength: -5,
+            max_hp: -40, 
+            salary_growth: 150,
             inventory: { 'first_aid_kit': 1, 'morphine': 1 }, // 攜帶多種物品
-            desc: "靈巧+30, 自帶急救箱與嗎啡" 
+            desc: "靈巧+30, 自帶急救箱與嗎啡，長期的壓力讓他很脆弱" 
         }
     }
 };
@@ -821,14 +832,14 @@ const achievementList = [
 const dailyChallengePool = [
     {
         id: 'daily_train_3',
-        name: '健身狂人',
-        desc: '訓練任意屬性 3 次',
+        name: '健身狂',
+        desc: '在健身房訓練 3 次',
         check: (p) => p.daily_progress?.train_count >= 3,
         reward: { money: 200, exp: 50 }
     },
     {
         id: 'daily_work_3',
-        name: '勤勞打工仔',
+        name: '勤奮工作',
         desc: '工作 3 次',
         check: (p) => p.daily_progress?.work_count >= 3,
         reward: { money: 300, exp: 30 }
@@ -842,15 +853,15 @@ const dailyChallengePool = [
     },
     {
         id: 'daily_no_crime',
-        name: '良好公民',
-        desc: '整天不犯罪',
+        name: '遵紀守法',
+        desc: '今天不犯任何罪',
         check: (p) => p.daily_progress?.crimes_count === 0,
         reward: { money: 150, exp: 20 }
     },
     {
         id: 'daily_eat_5',
         name: '美食家',
-        desc: '吃 5 次食物/飲料',
+        desc: '吃 5 次食物或飲品',
         check: (p) => p.daily_progress?.food_eaten >= 5,
         reward: { money: 100, exp: 30 }
     },
@@ -861,21 +872,151 @@ const dailyChallengePool = [
         check: (p) => p.daily_progress?.items_bought >= 3,
         reward: { money: 150, exp: 25 }
     },
+
+    // === 新增：生存類 ===
     {
         id: 'daily_survive',
-        name: '求生專家',
-        desc: '保持飢餓 & 口渴 > 50',
+        name: '穩定生活',
+        desc: '飢餓和口渴保持在 50 以上',
         check: (p) => p.hunger >= 50 && p.thirst >= 50,
         reward: { money: 100, exp: 20 }
     },
     {
         id: 'daily_hp_full',
-        name: '滿血復活',
-        desc: '結束時 HP = 最大值',
+        name: '健康第一',
+        desc: '血量保持滿血狀態',
         check: (p) => p.hp >= p.max_hp,
         reward: { money: 200, exp: 40 }
+    },
+    {
+        id: 'daily_no_damage',
+        name: '無傷戰士',
+        desc: '贏得戰鬥但血量不低於 80%',
+        check: (p) => p.daily_progress?.fights_won >= 1 && p.hp >= p.max_hp * 0.8,
+        reward: { money: 300, exp: 60 }
+    },
+
+    // === 新增：賺錢類 ===
+    {
+        id: 'daily_earn_1000',
+        name: '小富翁',
+        desc: '今天賺取 1000 元（含工作、犯罪、戰鬥）',
+        check: (p) => p.daily_progress?.money_earned >= 1000,
+        reward: { money: 500, exp: 50 }
+    },
+    {
+        id: 'daily_spend_500',
+        name: '消費達人',
+        desc: '今天花費 500 元購物',
+        check: (p) => p.daily_progress?.money_spent >= 500,
+        reward: { money: 200, exp: 30 }
+    },
+    {
+        id: 'daily_rich',
+        name: '財富自由',
+        desc: '持有 5000 元以上',
+        check: (p) => p.money >= 5000,
+        reward: { money: 300, exp: 50 }
+    },
+
+    // === 新增：戰鬥類 ===
+    {
+        id: 'daily_boss_fight',
+        name: '挑戰強敵',
+        desc: '挑戰並擊敗幫派頭目或更強敵人',
+        check: (p) => p.daily_progress?.defeated_tough_enemy >= 1,
+        reward: { money: 800, exp: 150 }
+    },
+    {
+        id: 'daily_win_streak',
+        name: '連勝王',
+        desc: '連續贏得 3 場戰鬥',
+        check: (p) => p.daily_progress?.win_streak >= 3,
+        reward: { money: 400, exp: 80 }
+    },
+    {
+        id: 'daily_no_fight',
+        name: '和平主義者',
+        desc: '今天不參與任何戰鬥',
+        check: (p) => p.daily_progress?.fights_won === 0,
+        reward: { money: 150, exp: 30 }
+    },
+
+    // === 新增：犯罪類 ===
+    {
+        id: 'daily_crime_3',
+        name: '職業罪犯',
+        desc: '成功犯罪 3 次',
+        check: (p) => p.daily_progress?.crimes_count >= 3,
+        reward: { money: 400, exp: 60 }
+    },
+    {
+        id: 'daily_perfect_crime',
+        name: '完美犯罪',
+        desc: '犯罪成功率 100%（至少犯罪 3 次）',
+        check: (p) => p.daily_progress?.crimes_count >= 3 && p.daily_progress?.crime_fails === 0,
+        reward: { money: 600, exp: 100 }
+    },
+
+    // === 新增：技能類 ===
+    {
+        id: 'daily_train_all',
+        name: '全能訓練',
+        desc: '力量和速度各訓練至少 1 次',
+        check: (p) => p.daily_progress?.train_str >= 1 && p.daily_progress?.train_spd >= 1,
+        reward: { money: 250, exp: 50 }
+    },
+    {
+        id: 'daily_level_up',
+        name: '成長之路',
+        desc: '今天升級至少 1 次',
+        check: (p) => p.daily_progress?.level_ups >= 1,
+        reward: { money: 300, exp: 80 }
+    },
+
+    // === 新增：時間類 ===
+    {
+        id: 'daily_early_bird',
+        name: '早起的鳥兒',
+        desc: '在早上 6 點前完成任一活動',
+        check: (p) => p.daily_progress?.early_activity === true,
+        reward: { money: 150, exp: 40 }
+    },
+    {
+        id: 'daily_night_owl',
+        name: '夜貓子',
+        desc: '在晚上 22 點後完成任一活動',
+        check: (p) => p.daily_progress?.late_activity === true,
+        reward: { money: 150, exp: 40 }
+    },
+
+    // === 新增：困難挑戰 ===
+    {
+        id: 'daily_multitask',
+        name: '多才多藝',
+        desc: '工作、戰鬥、訓練、犯罪各完成至少 1 次',
+        check: (p) => p.daily_progress?.work_count >= 1 && 
+                      p.daily_progress?.fights_won >= 1 && 
+                      p.daily_progress?.train_count >= 1 && 
+                      p.daily_progress?.crimes_count >= 1,
+        reward: { money: 1000, exp: 200 }
+    },
+    {
+        id: 'daily_minimalist',
+        name: '極簡主義',
+        desc: '今天不購買任何物品',
+        check: (p) => p.daily_progress?.items_bought === 0,
+        reward: { money: 200, exp: 40 }
+    },
+    {
+        id: 'daily_perfect_day',
+        name: '完美的一天',
+        desc: 'HP、飢餓、口渴都保持 80 以上',
+        check: (p) => p.hp >= p.max_hp * 0.8 && p.hunger >= 80 && p.thirst >= 80,
+        reward: { money: 400, exp: 80 }
     }
 ];
+
 
 // 主線任務（階段性目標）
 const mainQuests = [
