@@ -7,15 +7,43 @@
     <link rel="stylesheet" href="style.css" />
   </head>
   <body>
-    <div id="app-container">
+    <div id="intro-screen">
+      <div class="intro-content">
+        <h1>🌃 地下秩序</h1>
+        <p style="color: #888; margin-bottom: 30px">
+          這是一座沒有法律的城市。<br />
+          你的出身，將決定你在這條街上的生存方式。<br />
+          <span style="color: #e74c3c; font-size: 0.9rem"
+            >(注意：職業選擇後無法更改)</span
+          >
+        </p>
+        <div id="intro-job-list" class="grid-2"></div>
+      </div>
+    </div>
+
+    <div id="app-container" style="display: none">
       <aside id="sidebar">
         <div class="brand">
           <h2>🌃 地下秩序</h2>
-          <small>RPG Ver 2.0</small>
+          <small>RPG Ver 2.5</small>
         </div>
         <nav>
           <button onclick="showPanel('home')" class="nav-btn active">
             🏠 藏身處
+          </button>
+          <button
+            onclick="showPanel('estate')"
+            class="nav-btn"
+            style="color: #2ecc71"
+          >
+            🏘️ 房地產
+          </button>
+          <button
+            onclick="showPanel('edu')"
+            class="nav-btn"
+            style="color: #3498db"
+          >
+            🎓 城市學院
           </button>
           <button onclick="showPanel('gym')" class="nav-btn">
             🏋️ 地下拳館
@@ -25,7 +53,7 @@
             class="nav-btn"
             style="color: #f1c40f"
           >
-            💼 人力銀行
+            💼 我的職業
           </button>
           <button
             onclick="showPanel('fight')"
@@ -33,6 +61,13 @@
             style="color: #e74c3c"
           >
             ⚔️ 街頭火拚
+          </button>
+          <button
+            onclick="showPanel('casino')"
+            class="nav-btn"
+            style="color: #9b59b6"
+          >
+            🎰 地下賭場
           </button>
           <button onclick="showPanel('crimes')" class="nav-btn">
             🔫 街頭犯罪
@@ -48,59 +83,53 @@
 
       <main id="main-content">
         <header id="status-bar">
-          <div class="stat-group">
-            <div class="stat-label">
-              Lv.<span id="level">1</span>
-              <span id="job-title" style="font-size: 0.8em; color: #888"
-                >(無業)</span
-              >
+            <div class="stat-row" style="display:flex; justify-content:space-between; width:100%; margin-bottom:10px; border-bottom:1px solid #333; padding-bottom:5px;">
+                <div class="stat-group">
+                    <div class="stat-label">📅 日期</div>
+                    <div class="stat-value" style="color:#fff">第 <span id="day-display">1</span> 天 <span id="time-display" style="color:#f1c40f">08:00</span></div>
+                </div>
+                <div class="stat-group">
+                    <div class="stat-label">💰 現金</div>
+                    <div class="stat-value money-text">$<span id="money">0</span></div>
+                </div>
+                <div class="stat-group">
+                    <div class="stat-label">⚔️ 戰力</div>
+                    <div class="stat-value" style="color: #e74c3c"><span id="total-atk">0</span></div>
+                </div>
             </div>
-            <div class="progress-track" style="height: 5px">
-              <div
-                id="exp-bar"
-                class="progress-fill"
-                style="width: 0%; background: #f1c40f"
-              ></div>
-            </div>
-          </div>
 
-          <div class="stat-group">
-            <div class="stat-label">💰 現金</div>
-            <div class="stat-value money-text">$<span id="money">0</span></div>
-          </div>
-
-          <div class="stat-group">
-            <div class="stat-label">❤️ 生命 <span id="hp">0</span></div>
-            <div class="progress-track">
-              <div
-                id="hp-bar"
-                class="progress-fill hp-fill"
-                style="width: 100%"
-              ></div>
+            <div style="margin-bottom: 10px;">
+                 <div class="stat-label">Lv.<span id="level">1</span> <span id="job-title" style="color: #f1c40f">(職業)</span></div>
+                 <div class="progress-track" style="height: 5px">
+                    <div id="exp-bar" class="progress-fill" style="width: 0%; background: #f1c40f"></div>
+                 </div>
             </div>
-          </div>
 
-          <div class="stat-group">
-            <div class="stat-label">⚡ 體力 <span id="energy">0</span></div>
-            <div class="progress-track">
-              <div
-                id="energy-bar"
-                class="progress-fill"
-                style="width: 0%"
-              ></div>
-            </div>
-          </div>
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; width:100%;">
+                <div class="stat-group">
+                    <div class="stat-label">❤️ 生命 <span id="hp">0</span></div>
+                    <div class="progress-track"><div id="hp-bar" class="progress-fill hp-fill" style="width: 100%;"></div></div>
+                </div>
+                
+                <div class="stat-group">
+                    <div class="stat-label">⚡ 體力 <span id="energy">0</span></div>
+                    <div class="progress-track"><div id="energy-bar" class="progress-fill" style="width: 0%;"></div></div>
+                </div>
 
-          <div class="stat-group">
-            <div class="stat-label">⚔️ 攻擊力</div>
-            <div class="stat-value" style="color: #e74c3c">
-              <span id="total-atk">0</span>
+                <div class="stat-group">
+                    <div class="stat-label">🍗 飽食 <span id="hunger">0</span></div>
+                    <div class="progress-track"><div id="hunger-bar" class="progress-fill" style="width: 100%; background:#d35400;"></div></div>
+                </div>
+
+                <div class="stat-group">
+                    <div class="stat-label">💧 解渴 <span id="thirst">0</span></div>
+                    <div class="progress-track"><div id="thirst-bar" class="progress-fill" style="width: 100%; background:#3498db;"></div></div>
+                </div>
             </div>
-          </div>
         </header>
 
         <div id="log-area">
-          <div class="log-entry system-msg">> RPG 系統載入完成...</div>
+          <div class="log-entry system-msg">> 系統連線成功...</div>
         </div>
 
         <div id="content-area">
@@ -142,30 +171,110 @@
           </div>
 
           <div id="jobs" class="panel">
-            <div class="panel-header">人力銀行</div>
+            <div class="panel-header">我的職業</div>
             <div class="panel-body">
               <div
                 class="card"
                 style="border-left: 5px solid #f1c40f; margin-bottom: 20px"
               >
                 <h4>
-                  💼 目前職位：<span id="current-job-name">無業遊民</span>
+                  💼 現職：<span id="current-job-name" style="color: #fff"
+                    >無</span
+                  >
                 </h4>
-                <p id="current-job-desc">你沒有工作。</p>
+                <p id="current-job-desc" style="color: #aaa; font-size: 0.9rem">
+                  ...
+                </p>
+                <hr
+                  style="border: 0; border-top: 1px dashed #444; margin: 15px 0"
+                />
+                <p>
+                  每日薪資:
+                  <span
+                    id="current-job-salary"
+                    style="color: #2ecc71; font-weight: bold"
+                    >$0</span
+                  >
+                </p>
                 <button
                   class="action-btn"
                   onclick="work()"
                   style="width: 100%; margin-top: 10px"
                 >
-                  🛠️ 開始工作 (消耗 10 體力)
+                  🛠️ 打卡上班 (消耗 10 體力)
                 </button>
               </div>
 
-              <h4>職缺列表</h4>
-              <div id="job-list" class="grid-2"></div>
+              <div
+                class="card"
+                style="
+                  background: #222;
+                  color: #666;
+                  font-size: 0.85rem;
+                  text-align: center;
+                "
+              >
+                職業已綁定，無法更換跑道。
+              </div>
+            </div>
+          </div>
+          <div id="estate" class="panel">
+            <div class="panel-header">房地產仲介</div>
+            <div class="panel-body">
+              <div
+                class="card"
+                style="margin-bottom: 20px; border-left: 5px solid #2ecc71"
+              >
+                <h4>目前的家：<span id="current-house-name">廢棄木屋</span></h4>
+                <p>回復倍率：<span id="current-house-mult">1.0x</span></p>
+              </div>
+              <h4>待售物件</h4>
+              <div id="estate-list" class="grid-2"></div>
+            </div>
+          </div>
+          <div id="edu" class="panel">
+            <div class="panel-header">城市學院</div>
+            <div class="panel-body">
+              <p class="desc">知識就是力量。完成課程可獲得永久能力提升。</p>
+              <div id="edu-list" class="grid-2"></div>
             </div>
           </div>
 
+          <div id="casino" class="panel">
+            <div class="panel-header">地下賭場</div>
+            <div class="panel-body">
+              <div class="card text-center">
+                <h3>幸運擲硬幣 (50% 勝率)</h3>
+                <p style="color: #aaa">翻倍或歸零，你敢賭嗎？</p>
+                <div style="margin: 20px 0">
+                  <input
+                    type="number"
+                    id="gamble-amount"
+                    placeholder="輸入賭注金額"
+                    style="
+                      padding: 10px;
+                      width: 150px;
+                      background: #333;
+                      color: white;
+                      border: 1px solid #555;
+                      border-radius: 4px;
+                    "
+                  />
+                </div>
+                <button
+                  class="action-btn"
+                  onclick="gambleCoinFlip()"
+                  style="background: #9b59b6; width: 100%"
+                >
+                  🎲 擲硬幣
+                </button>
+                <div
+                  id="gamble-result"
+                  style="margin-top: 15px; font-weight: bold; height: 20px"
+                ></div>
+              </div>
+            </div>
+          </div>
           <div id="gym" class="panel">
             <div class="panel-header">地下拳館</div>
             <div class="panel-body">
@@ -232,21 +341,21 @@
                   <div class="crime-icon">🗑️</div>
                   <div class="crime-info">
                     <h4>翻垃圾桶</h4>
-                    <small>消耗 2 勇氣</small>
+                    <small>消耗 5 體力</small>
                   </div>
                 </button>
                 <button class="crime-card" onclick="commitCrime('shoplift')">
                   <div class="crime-icon">🏪</div>
                   <div class="crime-info">
                     <h4>超商偷竊</h4>
-                    <small>消耗 4 勇氣</small>
+                    <small>消耗 10 體力</small>
                   </div>
                 </button>
                 <button class="crime-card" onclick="commitCrime('rob_granny')">
                   <div class="crime-icon">👵</div>
                   <div class="crime-info">
                     <h4>搶劫路人</h4>
-                    <small>消耗 10 勇氣</small>
+                    <small>消耗 15 體力</small>
                   </div>
                 </button>
               </div>
@@ -256,38 +365,17 @@
           <div id="shop" class="panel">
             <div class="panel-header">24h 便利商店</div>
             <div class="panel-body">
-              <div
-                class="shop-tabs"
-                style="
-                  display: flex;
-                  gap: 5px;
-                  margin-bottom: 15px;
-                  overflow-x: auto;
-                  padding-bottom: 5px;
-                "
-              >
-                <button class="filter-btn active" onclick="renderShop('all')">
-                  全部
-                </button>
-                <button class="filter-btn" onclick="renderShop('weapon')">
-                  ⚔️ 武器
-                </button>
-                <button class="filter-btn" onclick="renderShop('armor')">
-                  🛡️ 防具
-                </button>
-                <button class="filter-btn" onclick="renderShop('medical')">
-                  💊 醫療
-                </button>
-                <button class="filter-btn" onclick="renderShop('food')">
-                  ⚡ 食品
-                </button>
-                <button class="filter-btn" onclick="renderShop('misc')">
-                  🍺 雜項
-                </button>
-              </div>
+             <div class="shop-tabs" style="display: flex; gap: 5px; margin-bottom: 15px; overflow-x: auto; padding-bottom: 5px;">
+             <button class="filter-btn active" onclick="renderShop('all')">全部</button>
+             <button class="filter-btn" onclick="renderShop('weapon')">⚔️ 武器</button>
+             <button class="filter-btn" onclick="renderShop('armor')">🛡️ 防具</button>
+             <button class="filter-btn" onclick="renderShop('medical')">💊 醫療</button>
+             <button class="filter-btn" onclick="renderShop('food')">🍗 食物</button> <button class="filter-btn" onclick="renderShop('drink')">💧 飲料</button> <button class="filter-btn" onclick="renderShop('misc')">🍺 雜項</button>
+           </div>
 
               <h4>🛒 架上商品</h4>
               <div id="shop-list" class="grid-2"></div>
+              <div id="shop-pagination" class="pagination-controls"></div>
             </div>
           </div>
         </div>

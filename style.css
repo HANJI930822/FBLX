@@ -103,14 +103,16 @@ body {
   overflow-y: auto;
 }
 #status-bar {
-  display: grid;
-  grid-template-columns: 1fr 2fr 2fr 2fr 1fr;
-  gap: 15px;
+  display: flex;
+  flex-direction: column; 
+  gap: 10px;
+  
   background: var(--bg-panel);
   padding: 15px 25px;
   border-radius: var(--radius);
   margin-bottom: 20px;
   border: 1px solid var(--border-color);
+  flex-shrink: 0; 
 }
 .stat-label {
   font-size: 0.85rem;
@@ -311,4 +313,101 @@ body {
   background: var(--accent-blue);
   color: white;
   border-color: var(--accent-blue);
+}
+.pagination-controls {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 15px;
+    margin-top: 20px;
+    padding-top: 10px;
+    border-top: 1px dashed #333;
+}
+
+.page-btn {
+    background: #333;
+    color: white;
+    border: 1px solid #555;
+    padding: 5px 15px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.9rem;
+}
+
+.page-btn:hover { background: #555; }
+.page-btn:disabled { 
+    background: #222; 
+    color: #555; 
+    border-color: #333; 
+    cursor: not-allowed; 
+}
+
+.page-info {
+    color: #888;
+    font-size: 0.9rem;
+}
+/* --- 開場畫面 --- */
+#intro-screen {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background-color: #050505; /* 深黑色背景 */
+    z-index: 9999;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+    overflow-y: auto; /* 防止手機版內容太長 */
+}
+
+.intro-content {
+    max-width: 900px;
+    width: 100%;
+    text-align: center;
+    animation: fadeIn 1s;
+}
+
+.intro-content h1 {
+    font-size: 3rem;
+    color: white;
+    margin-bottom: 10px;
+    letter-spacing: 2px;
+    text-shadow: 0 0 10px rgba(52, 152, 219, 0.5); /* 藍色光暈 */
+}
+
+/* 職業選擇卡片 */
+.job-select-card {
+    background: #1a1a1a;
+    border: 1px solid #333;
+    padding: 25px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s;
+    text-align: left;
+    position: relative;
+    overflow: hidden;
+}
+
+.job-select-card:hover {
+    border-color: #f1c40f; /* 金色邊框 */
+    transform: translateY(-5px);
+    background: #222;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+}
+
+.job-select-card h3 {
+    margin: 0 0 10px 0;
+    color: #fff;
+    font-size: 1.3rem;
+    border-bottom: 1px solid #444;
+    padding-bottom: 10px;
+}
+
+.job-bonus-list {
+    margin-top: 15px;
+    font-size: 0.9rem;
+    color: #2ecc71; /* 綠色文字 */
+    background: rgba(46, 204, 113, 0.1);
+    padding: 10px;
+    border-radius: 4px;
 }
