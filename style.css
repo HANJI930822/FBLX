@@ -1,164 +1,368 @@
 /* css/style.css */
 
 :root {
-    /* 配色方案 (Dark Theme) */
-    --bg-dark: #121212;
-    --bg-panel: #1e1e1e;
-    --bg-sidebar: #181818;
-    --text-main: #e0e0e0;
-    --text-muted: #a0a0a0;
-    
-    --accent-blue: #3498db;    /* 體力顏色 */
-    --accent-red: #e74c3c;     /* 勇氣顏色 */
-    --accent-green: #2ecc71;   /* 金錢顏色 */
-    --accent-hover: #444;
-    
-    --border-color: #333;
-    --radius: 8px;
+  /* 配色方案 (Dark Theme) */
+  --bg-dark: #121212;
+  --bg-panel: #1e1e1e;
+  --bg-sidebar: #181818;
+  --text-main: #e0e0e0;
+  --text-muted: #a0a0a0;
+
+  --accent-blue: #3498db; /* 體力顏色 */
+  --accent-hp: #e74c3c; /* hp顏色 */
+  --accent-green: #2ecc71; /* 金錢顏色 */
+  --accent-hover: #444;
+
+  --border-color: #333;
+  --radius: 8px;
 }
 
-* { box-sizing: border-box; }
+* {
+  box-sizing: border-box;
+}
 
 body {
-    font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-    background-color: var(--bg-dark);
-    color: var(--text-main);
-    margin: 0;
-    height: 100vh;
-    display: flex;
+  font-family: "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  background-color: var(--bg-dark);
+  color: var(--text-main);
+  margin: 0;
+  height: 100vh;
+  display: flex;
 }
 
 /* --- 佈局 --- */
-#app-container { display: flex; width: 100%; height: 100%; }
+#app-container {
+  display: flex;
+  width: 100%;
+  height: 100%;
+}
 
 /* 左側選單 */
 #sidebar {
-    width: 240px;
-    background-color: var(--bg-sidebar);
-    border-right: 1px solid var(--border-color);
-    display: flex;
-    flex-direction: column;
-    padding: 20px;
+  width: 240px;
+  background-color: var(--bg-sidebar);
+  border-right: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+  padding: 20px;
 }
 
-.brand h2 { margin: 0; color: var(--text-main); font-size: 1.4rem; letter-spacing: 1px; }
-.brand small { color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase; }
-.brand { margin-bottom: 30px; padding-bottom: 20px; border-bottom: 1px solid var(--border-color); }
+.brand h2 {
+  margin: 0;
+  color: var(--text-main);
+  font-size: 1.4rem;
+  letter-spacing: 1px;
+}
+.brand small {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  text-transform: uppercase;
+}
+.brand {
+  margin-bottom: 30px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--border-color);
+}
 
 .nav-btn {
-    background: transparent;
-    color: var(--text-muted);
-    border: none;
-    padding: 12px 15px;
-    text-align: left;
-    width: 100%;
-    cursor: pointer;
-    border-radius: var(--radius);
-    transition: all 0.2s;
-    font-size: 1rem;
-    margin-bottom: 5px;
+  background: transparent;
+  color: var(--text-muted);
+  border: none;
+  padding: 12px 15px;
+  text-align: left;
+  width: 100%;
+  cursor: pointer;
+  border-radius: var(--radius);
+  transition: all 0.2s;
+  font-size: 1rem;
+  margin-bottom: 5px;
 }
-.nav-btn:hover { background-color: var(--accent-hover); color: white; }
-.nav-btn.active { background-color: #333; color: white; border-left: 3px solid var(--accent-blue); }
+.nav-btn:hover {
+  background-color: var(--accent-hover);
+  color: white;
+}
+.nav-btn.active {
+  background-color: #333;
+  color: white;
+  border-left: 3px solid var(--accent-blue);
+}
 
-.sidebar-footer { margin-top: auto; }
-.danger-btn { width: 100%; padding: 10px; background: #522; color: #faa; border: 1px solid #733; border-radius: var(--radius); cursor: pointer; }
+.sidebar-footer {
+  margin-top: auto;
+}
+.danger-btn {
+  width: 100%;
+  padding: 10px;
+  background: #522;
+  color: #faa;
+  border: 1px solid #733;
+  border-radius: var(--radius);
+  cursor: pointer;
+}
 
 /* 右側主內容 */
 #main-content {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    padding: 20px 40px;
-    overflow-y: auto;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 20px 40px;
+  overflow-y: auto;
 }
 
 /* 狀態列 (Header) */
 #status-bar {
-    display: grid;
-    grid-template-columns: 1fr 2fr 2fr 1fr;
-    gap: 20px;
-    background: var(--bg-panel);
-    padding: 15px 25px;
-    border-radius: var(--radius);
-    margin-bottom: 20px;
-    border: 1px solid var(--border-color);
+  display: grid;
+  grid-template-columns: 1fr 2fr 2fr 2fr 1fr;
+  gap: 15px;
+  background: var(--bg-panel);
+  padding: 15px 25px;
+  border-radius: var(--radius);
+  margin-bottom: 20px;
+  border: 1px solid var(--border-color);
 }
 
-.stat-label { font-size: 0.85rem; color: var(--text-muted); margin-bottom: 5px; }
-.money-text { color: var(--accent-green); font-size: 1.2rem; font-weight: bold; }
+.stat-label {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin-bottom: 5px;
+}
+.money-text {
+  color: var(--accent-green);
+  font-size: 1.2rem;
+  font-weight: bold;
+}
 
 /* 進度條樣式 */
 .progress-track {
-    width: 100%;
-    height: 10px;
-    background: #333;
-    border-radius: 5px;
-    overflow: hidden;
+  width: 100%;
+  height: 10px;
+  background: #333;
+  border-radius: 5px;
+  overflow: hidden;
 }
-.progress-fill { height: 100%; background: var(--accent-blue); transition: width 0.3s ease; }
-.nerve-fill { background: var(--accent-red); }
-
+.progress-fill {
+  height: 100%;
+  background: var(--accent-blue);
+  transition: width 0.3s ease;
+}
+.nerve-fill { background: var(--accent-nerve); }
+.hp-fill { background: var(--accent-hp); height: 100%; transition: width 0.3s ease; }
 /* 訊息紀錄 (Log) */
 #log-area {
-    height: 120px;
-    background: #000;
-    border: 1px solid #333;
-    border-radius: var(--radius);
-    padding: 10px;
-    overflow-y: auto;
-    font-family: 'Courier New', Courier, monospace;
-    font-size: 0.9rem;
-    margin-bottom: 20px;
-    color: #ccc;
+  height: 120px;
+  background: #000;
+  border: 1px solid #333;
+  border-radius: var(--radius);
+  padding: 10px;
+  overflow-y: auto;
+  font-family: "Courier New", Courier, monospace;
+  font-size: 0.9rem;
+  margin-bottom: 20px;
+  color: #ccc;
 }
-.log-entry { margin-bottom: 4px; }
-.log-success { color: var(--accent-green); }
-.log-fail { color: var(--accent-red); }
-
+.log-entry {
+  margin-bottom: 4px;
+}
+.log-success {
+  color: var(--accent-green);
+}
+.log-fail {
+  color: var(--accent-red);
+}
+.battle-log {
+    background: #000;
+    padding: 10px;
+    border: 1px solid #444;
+    border-radius: 4px;
+    height: 150px;
+    overflow-y: auto;
+    font-family: 'Courier New', monospace;
+    font-size: 0.85rem;
+    margin-bottom: 15px;
+}
+.log-line { margin-bottom: 3px; border-bottom: 1px solid #222; padding-bottom: 2px;}
+.log-player { color: #3498db; } /* 玩家動作是藍色 */
+.log-enemy { color: #e74c3c; }  /* 敵人動作是紅色 */
+.log-win { color: #f1c40f; font-weight: bold; } /* 勝利是金色 */
+.log-die { color: #ff0000; font-weight: bold; background: #200; } /* 死亡 */
 /* 面板通用樣式 */
-.panel { display: none; animation: fadeIn 0.3s; }
-.panel.active { display: block; }
-@keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+.panel {
+  display: none;
+  animation: fadeIn 0.3s;
+}
+.panel.active {
+  display: block;
+}
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
 
-.panel-header { font-size: 1.5rem; font-weight: bold; margin-bottom: 15px; border-bottom: 2px solid var(--border-color); padding-bottom: 10px; }
-.panel-body .desc { color: var(--text-muted); margin-bottom: 20px; }
+.panel-header {
+  font-size: 1.5rem;
+  font-weight: bold;
+  margin-bottom: 15px;
+  border-bottom: 2px solid var(--border-color);
+  padding-bottom: 10px;
+}
+.panel-body .desc {
+  color: var(--text-muted);
+  margin-bottom: 20px;
+}
 
 /* 卡片與格線 */
-.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-.card { background: var(--bg-panel); padding: 20px; border-radius: var(--radius); border: 1px solid var(--border-color); }
-.text-center { text-align: center; }
+.grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+.card {
+  background: var(--bg-panel);
+  padding: 20px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border-color);
+}
+.text-center {
+  text-align: center;
+}
 
-.stat-big { font-size: 2rem; font-weight: bold; margin: 10px 0; color: white; }
+.stat-big {
+  font-size: 2rem;
+  font-weight: bold;
+  margin: 10px 0;
+  color: white;
+}
 
 /* 按鈕 */
 .action-btn {
-    background: var(--accent-blue);
-    color: white;
-    border: none;
-    padding: 10px 20px;
-    border-radius: 4px;
-    cursor: pointer;
-    font-weight: bold;
-    transition: transform 0.1s;
+  background: var(--accent-blue);
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: transform 0.1s;
 }
-.action-btn:active { transform: scale(0.98); }
+.action-btn:active {
+  transform: scale(0.98);
+}
 
 /* 犯罪卡片列表 */
-.crime-list { display: flex; flex-direction: column; gap: 10px; }
+.crime-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
 .crime-card {
+  display: flex;
+  align-items: center;
+  background: var(--bg-panel);
+  border: 1px solid var(--border-color);
+  padding: 15px;
+  border-radius: var(--radius);
+  cursor: pointer;
+  text-align: left;
+  color: var(--text-main);
+  transition: background 0.2s;
+}
+.crime-card:hover {
+  background: #2a2a2a;
+  border-color: #555;
+}
+.crime-icon {
+  font-size: 2rem;
+  margin-right: 15px;
+}
+.crime-info h4 {
+  margin: 0 0 5px 0;
+}
+.crime-info small {
+  color: var(--text-muted);
+}
+/* --- 像素舞台樣式 --- */
+.pixel-stage {
+    width: 100%;
+    height: 200px;
+    background: #000;
+    margin-bottom: 20px;
+    border: 2px solid #444;
+    border-radius: 8px;
+    overflow: hidden;
+    position: relative; /* 為了讓特效絕對定位 */
     display: flex;
     align-items: center;
-    background: var(--bg-panel);
-    border: 1px solid var(--border-color);
-    padding: 15px;
-    border-radius: var(--radius);
-    cursor: pointer;
-    text-align: left;
-    color: var(--text-main);
-    transition: background 0.2s;
+    justify-content: center;
 }
-.crime-card:hover { background: #2a2a2a; border-color: #555; }
-.crime-icon { font-size: 2rem; margin-right: 15px; }
-.crime-info h4 { margin: 0 0 5px 0; }
-.crime-info small { color: var(--text-muted); }
+
+.pixel-stage img {
+    height: 100%;
+    width: auto;
+    object-fit: contain;
+    /* 關鍵：讓像素圖保持銳利，不要變模糊 */
+    image-rendering: pixelated; 
+    transition: filter 0.2s;
+}
+
+/* --- 動畫特效 (Animations) --- */
+
+/* 1. 受傷震動 (Shake) */
+@keyframes shake {
+    0% { transform: translate(1px, 1px) rotate(0deg); }
+    10% { transform: translate(-1px, -2px) rotate(-1deg); }
+    20% { transform: translate(-3px, 0px) rotate(1deg); }
+    30% { transform: translate(3px, 2px) rotate(0deg); }
+    40% { transform: translate(1px, -1px) rotate(1deg); }
+    50% { transform: translate(-1px, 2px) rotate(-1deg); }
+    60% { transform: translate(-3px, 1px) rotate(0deg); }
+    70% { transform: translate(3px, 1px) rotate(-1deg); }
+    80% { transform: translate(-1px, -1px) rotate(1deg); }
+    90% { transform: translate(1px, 2px) rotate(0deg); }
+    100% { transform: translate(1px, -2px) rotate(-1deg); }
+}
+
+.anim-shake {
+    animation: shake 0.5s;
+    filter: sepia(100%) hue-rotate(-50deg) saturate(600%) contrast(0.8); /* 變紅 */
+}
+
+/* 2. 攻擊突刺 (Attack) */
+@keyframes lunge {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.2); } /* 瞬間放大 */
+    100% { transform: scale(1); }
+}
+.anim-attack {
+    animation: lunge 0.1s;
+}
+
+/* 3. 敵人死亡 (Fade Out) */
+.anim-die {
+    filter: grayscale(100%) brightness(0.2);
+    transition: all 1s ease;
+}
+/* css/style.css 的最後面加入 */
+
+/* 4. 玩家受傷 (螢幕邊框閃紅光) */
+@keyframes redFlash {
+    0% { box-shadow: inset 0 0 0 0 rgba(255, 0, 0, 0); border-color: #444; }
+    50% { box-shadow: inset 0 0 50px 20px rgba(231, 76, 60, 0.5); border-color: #e74c3c; }
+    100% { box-shadow: inset 0 0 0 0 rgba(255, 0, 0, 0); border-color: #444; }
+}
+
+.anim-damage {
+    animation: redFlash 0.3s linear;
+}
+
+/* 微調：確保圖片在舞台中保持適當大小 */
+.pixel-stage img {
+    max-height: 90%; /* 留一點邊距 */
+    max-width: 90%;
+}
+

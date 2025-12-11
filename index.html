@@ -1,3 +1,11 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>地下秩序</title>
+    <link rel="stylesheet" href="style.css">
+</head>
 <body>
     <div id="app-container">
         <aside id="sidebar">
@@ -8,7 +16,9 @@
             <nav>
                 <button onclick="showPanel('home')" class="nav-btn active">🏠 藏身處</button>
                 <button onclick="showPanel('gym')" class="nav-btn">🏋️ 地下拳館</button>
+                <button onclick="showPanel('fight')" class="nav-btn" style="color:#e74c3c;">⚔️ 街頭火拚</button>
                 <button onclick="showPanel('crimes')" class="nav-btn">🔫 街頭犯罪</button>
+                <button onclick="showPanel('shop')" class="nav-btn">🏪 便利商店</button>
             </nav>
             <div class="sidebar-footer">
                 <button onclick="resetGame()" class="danger-btn">⚠️ 重置存檔</button>
@@ -16,12 +26,20 @@
         </aside>
 
         <main id="main-content">
+            
             <header id="status-bar">
                 <div class="stat-group">
                     <div class="stat-label">💰 現金</div>
                     <div class="stat-value money-text">$<span id="money">0</span></div>
                 </div>
                 
+                <div class="stat-group">
+                    <div class="stat-label">❤️ 生命 <span id="hp">0</span>/<span id="max_hp">0</span></div>
+                    <div class="progress-track">
+                        <div id="hp-bar" class="progress-fill hp-fill" style="width: 100%;"></div>
+                    </div>
+                </div>
+
                 <div class="stat-group">
                     <div class="stat-label">⚡ 體力 <span id="energy">0</span>/<span id="max_energy">0</span></div>
                     <div class="progress-track">
@@ -37,16 +55,21 @@
                 </div>
                 
                 <div class="stat-group">
-                    <div class="stat-label">💪 戰力總和</div>
+                    <div class="stat-label">💪 戰力</div>
                     <div class="stat-value"><span id="strength">0</span></div>
                 </div>
             </header>
 
+            <div id="scene-stage" class="pixel-stage">
+                <img id="scene-img" src="image\oak_woods_v1.0\oak_woods_v1.0\background\background_layer_2.png" alt="Scene">
+            </div>
+
             <div id="log-area">
-                <div class="log-entry system-msg">系統連線成功... 等待指令...</div>
+                <div class="log-entry system-msg">系統連線成功... 載入像素引擎...</div>
             </div>
 
             <div id="content-area">
+                
                 <div id="home" class="panel active">
                     <div class="panel-header">藏身處</div>
                     <div class="panel-body">
@@ -74,6 +97,26 @@
                                 <button class="action-btn" onclick="train('speed')">沙包訓練 (-5 體力)</button>
                             </div>
                         </div>
+                    </div>
+                </div>
+
+                <div id="fight" class="panel">
+                    <div class="panel-header">街頭火拚</div>
+                    <div class="panel-body">
+                        
+                        <div id="combat-screen" style="display:none; margin-bottom: 20px;">
+                            <div style="text-align:center; margin-bottom:10px; color:#e74c3c; font-weight:bold;">
+                                正在與 <span id="enemy-name">敵人</span> 戰鬥中...
+                            </div>
+                            <div id="battle-log" class="battle-log"></div>
+                            <button class="action-btn" onclick="endCombat()" style="width:100%; background:#555;">離開戰鬥 / 下一場</button>
+                        </div>
+
+                        <div id="enemy-selection">
+                            <p class="desc">挑個看起來好欺負的。</p>
+                            <div id="enemy-list" class="grid-2"></div>
+                        </div>
+
                     </div>
                 </div>
 
@@ -106,9 +149,34 @@
                         </div>
                     </div>
                 </div>
-            </div>
-        </main>
+
+                <div id="shop" class="panel">
+                    <div class="panel-header">24h 便利商店</div>
+                    <div class="panel-body">
+                        
+                        <div style="background: var(--bg-panel); border-bottom: 2px solid var(--border-color); margin-bottom: 20px; padding-bottom: 20px;">
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                                <h4 style="margin:0;">🎒 持有物品</h4>
+                                <small style="color:var(--text-muted)">點擊使用</small>
+                            </div>
+                            <div id="inventory-list" class="grid-2">
+                                <p style="color:#666">背包是空的。</p>
+                            </div>
+                        </div>
+
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                            <h4 style="margin:0;">🛒 架上商品</h4>
+                            <small style="color:var(--text-muted)">現金交易</small>
+                        </div>
+                        <div id="shop-list" class="grid-2"></div>
+                        
+                    </div>
+                </div>
+
+            </div> </main>
     </div>
-    <script src="js/data.js"></script>
-    <script src="js/game.js"></script>
+    
+    <script src="data.js"></script>
+    <script src="game.js"></script>
 </body>
+</html>
