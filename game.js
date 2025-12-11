@@ -51,6 +51,7 @@ function initGame() {
             if (!player.main_quests_completed) player.main_quests_completed = [];
             if (!player.ach_shop_purchased) player.ach_shop_purchased = [];
             if (!player.perm_buffs) player.perm_buffs = {};
+            if (!player.enemyLevels) player.enemyLevels = {};
     
     initDailyChallenges();
             player.time = Math.floor(player.time);
@@ -216,6 +217,31 @@ function gameOver(reason) {
     location.reload();
 }
 // --- 戰鬥系統 ---
+function getEnemyCurrentState(id) {
+    const base = enemyData[id];
+    if (!base) return null;
+    
+    const lvl = player.enemyLevels[id] || 1;  // 預設等級 1
+    
+    // 自己調整成你想要的成長公式
+    const hp    = Math.floor(base.hp   * (1 + 0.3 * (lvl - 1)));  // 每級 +30% HP
+    const str   = Math.floor(base.str  * (1 + 0.25 * (lvl - 1))); // 每級 +25% 攻
+    const spd   = Math.floor(base.spd  * (1 + 0.2 * (lvl - 1)));  // 每級 +20% 速
+    const dex   = Math.floor(base.dex  * (1 + 0.2 * (lvl - 1)));  // 每級 +20% 靈巧
+    const reward = Math.floor(base.reward * (1 + 0.15 * (lvl - 1))); // 每級 +15% 獎金
+    const exp    = Math.floor(base.exp    * (1 + 0.15 * (lvl - 1))); // 每級 +15% EXP
+    
+    return {
+        ...base,
+        lvl,
+        hp,
+        str,
+        spd,
+        dex,
+        reward,
+        exp
+    };
+}
 
 function startCombat(enemyId) {
     if (player.hp <= 0) { log("重傷無法戰鬥！", "fail"); return; }
@@ -230,12 +256,11 @@ function startCombat(enemyId) {
     // ★ 記錄當前敵人 ID (給逃跑用)
     window.currentEnemyId = enemyId;
 
-    const enemy = enemyData[enemyId];
-    document.getElementById('enemy-name').innerText = enemy.name;
+    const enemy = getEnemyCurrentState(enemyId);
+    document.getElementById('enemy-name').innerText = `${enemy.name} (Lv.${enemy.lvl})`;
     document.getElementById('battle-log').innerHTML = '';
-
     isFighting = true;
-    simulateFight(enemy);
+    simulateFight(enemy, enemyId); 
 }
 function endCombat() {
     isFighting = false;
@@ -314,19 +339,43 @@ async function simulateFight(originalEnemy) {
     passTime(timeCost);
 
     if (player.hp > 0) {
+        player.money += originalEnemy.reward;
         player.stats.money_earned += originalEnemy.reward;
         player.stats.fights_won++;
+
         if (player.daily_progress) {
         player.daily_progress.fights_won++;
         checkDailyChallenges();
     }
     checkMainQuests();
-        let expGain = originalEnemy.exp || 10;
-        
-        addLog(`=== 勝利 ===`, "log-win");
-        addLog(`獲得: $${originalEnemy.reward}, Exp +${expGain}`, "log-win");
-        addLog(`激戰 ${rounds} 回合，經過了 ${timeCost} 小時。`, "normal");
 
+    let expGain = originalEnemy.exp || 10;
+        
+    addLog(`=== 勝利 ===`, "log-win");
+    addLog(`獲得: $${originalEnemy.reward}, Exp +${expGain}`, "log-win");
+    addLog(`激戰 ${rounds} 回合，經過了 ${timeCost} 小時。`, "normal");
+    
+    if (enemyId) {
+        if (!player.enemyLevels[enemyId]) player.enemyLevels[enemyId] = 1;
+        player.enemyLevels[enemyId] += 1;  // 每贏一次 +1 級
+    }
+    
+    if (originalEnemy.loot && originalEnemy.loot.length > 0) {
+        addLog(`--- 掉落物品 ---`, "normal");
+        originalEnemy.loot.forEach(drop => {
+            // 判定是否掉落
+            if (Math.random() < drop.chance) {
+                const itemName = itemData[drop.item]?.name || drop.item;
+                const qty = drop.qty || 1;
+                
+                // 加入背包
+                player.inventory[drop.item] = (player.inventory[drop.item] || 0) + qty;
+                
+                addLog(`🎁 獲得：${itemName} x${qty}`, "log-win");
+                log(`戰利品：${itemName} x${qty}`, "success");
+            }
+        });
+    }
         gainExp(expGain);
         updateUI();
 
@@ -337,8 +386,11 @@ async function simulateFight(originalEnemy) {
                  log(`🏆 成就解鎖：新秩序`, "success");
              }
         }
+
         checkAchievements();
 
+        await wait(2000);
+        endCombat();
     } else {
         addLog(`=== 死亡 ===`, "log-die");
         addLog(`你被擊殺了...`, "log-die");
@@ -697,9 +749,13 @@ function renderEnemies() {
   const list = document.getElementById("enemy-list");
   if (!list) return;
   list.innerHTML = "";
+
+
   for (const [id, enemy] of Object.entries(enemyData)) {
+    const enemy = getEnemyCurrentState(id);
     const card = document.createElement("div");
     card.className = "card";
+    
     card.innerHTML = `
             <div style="display:flex; justify-content:space-between; align-items:center;">
                 <h4>${enemy.name} <small style="color:#666">(Lv.?)</small></h4>
@@ -856,7 +912,13 @@ function renderInventory() {
             btn.style.marginTop = '5px';
             
             // 按鈕邏輯
-            if (item.type === 'weapon') {
+             // ★ 新增：判斷是否為可販賣物品
+             if (item.type === 'sellable' && item.sell_price > 0) {
+                btn.innerText = `💰 販賣 ($${item.sell_price})`;
+                btn.style.background = '#f39c12';
+                btn.onclick = () => sellItem(id);
+            }
+            else if (item.type === 'weapon') {
                 if (isEquippedWeapon) { btn.innerText = "已裝備"; btn.style.background = "#e74c3c"; btn.disabled = true; } 
                 else { btn.innerText = "裝備武器"; btn.style.background = "#2980b9"; btn.onclick = () => equipItem(id); }
             } else if (item.type === 'armor') {
@@ -875,6 +937,34 @@ function renderInventory() {
             invList.appendChild(card);
         }
     });
+}
+// 販賣物品
+function sellItem(itemId) {
+    const item = itemData[itemId];
+    if (!item) return;
+    
+    // 檢查是否可販賣
+    if (item.type !== 'sellable' || !item.sell_price) {
+        log("這個物品無法販賣！", "fail");
+        return;
+    }
+    
+    // 檢查是否擁有
+    if (!player.inventory[itemId] || player.inventory[itemId] <= 0) {
+        log("你沒有這個物品！", "fail");
+        return;
+    }
+    
+    // 販賣
+    player.money += item.sell_price;
+    player.inventory[itemId]--;
+    
+    if (player.inventory[itemId] <= 0) {
+        delete player.inventory[itemId];
+    }
+    
+    log(`販賣 ${item.name}，獲得 $${item.sell_price}`, "success");
+    updateUI();
 }
 
 function equipItem(itemId) {

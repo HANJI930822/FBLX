@@ -18,6 +18,7 @@ const defaultPlayerState = {
   completed_courses: [], 
   last_tick: Date.now(),
   inventory: {},
+  enemyLevels: {},
   // ★ 新增：統計數據 (用來判斷成就)
   stats: {
       fights_won: 0,      // 戰鬥勝利次數
@@ -409,7 +410,168 @@ const itemData = {
     'magazine': {
         name: "成人雜誌", cost: 200, category: 'misc', type: 'energy', value: 5,
         desc: "體力+5。封面很精彩。看完精神百倍？"
-    }
+    },
+    'dirty_coin': {
+    name: '髒硬幣',
+    cost: 0,
+    sell_price: 5,
+    category: 'loot',
+    type: 'sellable',
+    desc: '售價 $5。沾滿污垢的硬幣，但還能用。'
+},
+
+'stolen_wallet': {
+    name: '贓物錢包',
+    cost: 0,
+    sell_price: 50,
+    category: 'loot',
+    type: 'sellable',
+    desc: '售價 $50。別人的錢包，最好趕快脫手。'
+},
+
+'cheap_watch': {
+    name: '廉價手錶',
+    cost: 0,
+    sell_price: 80,
+    category: 'loot',
+    type: 'sellable',
+    desc: '售價 $80。山寨手錶，騙騙外行人。'
+},
+
+'cigarette_pack': {
+    name: '香菸盒',
+    cost: 0,
+    sell_price: 30,
+    category: 'loot',
+    type: 'sellable',
+    desc: '售價 $30。半包菸，有人會買。'
+},
+
+'dog_tag': {
+    name: '狗牌',
+    cost: 0,
+    sell_price: 10,
+    category: 'loot',
+    type: 'sellable',
+    desc: '售價 $10。流浪狗的項圈牌，收藏家可能有興趣。'
+},
+
+'drugs': {
+    name: '違禁品',
+    cost: 0,
+    sell_price: 200,
+    category: 'loot',
+    type: 'sellable',
+    desc: '售價 $200。非法物品，黑市很搶手。'
+},
+
+'dirty_money': {
+    name: '黑錢',
+    cost: 0,
+    sell_price: 150,
+    category: 'loot',
+    type: 'sellable',
+    desc: '售價 $150。來路不明的現金。'
+},
+
+'gang_badge': {
+    name: '幫派徽章',
+    cost: 0,
+    sell_price: 100,
+    category: 'loot',
+    type: 'sellable',
+    desc: '售價 $100。黑幫的身份象徵。'
+},
+
+'silencer': {
+    name: '消音器',
+    cost: 0,
+    sell_price: 500,
+    category: 'loot',
+    type: 'sellable',
+    desc: '售價 $500。專業殺手用的裝備。'
+},
+
+'blood_contract': {
+    name: '血契',
+    cost: 0,
+    sell_price: 300,
+    category: 'loot',
+    type: 'sellable',
+    desc: '售價 $300。寫著目標名字的暗殺契約。'
+},
+
+'police_badge': {
+    name: '警徽',
+    cost: 0,
+    sell_price: 400,
+    category: 'loot',
+    type: 'sellable',
+    desc: '售價 $400。真的警徽，很危險但很值錢。'
+},
+
+'handcuffs': {
+    name: '手銬',
+    cost: 0,
+    sell_price: 80,
+    category: 'loot',
+    type: 'sellable',
+    desc: '售價 $80。制式警用手銬。'
+},
+
+'confiscated_goods': {
+    name: '沒收物品',
+    cost: 0,
+    sell_price: 250,
+    category: 'loot',
+    type: 'sellable',
+    desc: '售價 $250。警察扣押的贓物。'
+},
+
+'gold_ring': {
+    name: '金戒指',
+    cost: 0,
+    sell_price: 800,
+    category: 'loot',
+    type: 'sellable',
+    desc: '售價 $800。真金打造的戒指。'
+},
+
+'gang_territory_map': {
+    name: '地盤地圖',
+    cost: 0,
+    sell_price: 600,
+    category: 'loot',
+    type: 'sellable',
+    desc: '售價 $600。標記著勢力範圍的機密地圖。'
+},
+
+'boss_crown': {
+    name: '王者之冠',
+    cost: 0,
+    sell_price: 10000,
+    category: 'loot',
+    type: 'sellable',
+    desc: '售價 $10,000。擊敗城市主宰者的證明，無價之寶。'
+},
+
+'legendary_armor': {
+    name: '傳奇護甲',
+    cost: 0,
+    sell_price: 0,  // 不能賣，只能裝備
+    category: 'armor',
+    type: 'armor',
+    value: 120,
+    desc: '防+120。傳說中的終極防具。'
+},
+'achievement_sword':{
+    name:'⚔️ 成就之劍',
+    cost: 0,
+    category: 'weapon',
+    type: 'weapon',
+    value: 200,
+    desc: '攻+200。只有真正的成就大師才能持有的神兵。'
+}
 };
 
 const crimeData = {
@@ -419,21 +581,173 @@ const crimeData = {
 };
 
 const enemyData = {
-    'hobo': { 
-        name: "流浪漢", hp: 30, str: 5, spd: 2, dex: 5, // 靈敏低，容易逃
-        reward: 10, exp: 5, time: 1, desc: "看起來很好欺負。" 
+    // === 弱小敵人（新手區）===
+    'stray_dog': {
+        name: '流浪狗',
+        hp: 20,
+        str: 3,
+        spd: 8,
+        dex: 10,
+        reward: 5,
+        exp: 3,
+        time: 1,
+        desc: '飢餓的野狗，攻擊性不高。',
+        loot: [
+            { item: 'dog_tag', chance: 0.3, qty: 1 }
+        ]
     },
-    'punk': { 
-        name: "街頭混混", hp: 80, str: 15, spd: 10, dex: 20, 
-        reward: 60, exp: 20, time: 2, desc: "拿著小刀揮舞。" 
+    'hobo': {
+        name: '流浪漢',
+        hp: 30,
+        str: 5,
+        spd: 2,
+        dex: 5,
+        reward: 10,
+        exp: 5,
+        time: 1,
+        desc: '為了爭奪地盤而打架的流浪漢。',
+        loot: [
+            { item: 'dirty_coin', chance: 0.5, qty: 1 },
+            { item: 'expired_bread', chance: 0.2, qty: 1 }
+        ]
     },
-    'thug': { 
-        name: "幫派打手", hp: 200, str: 40, spd: 25, dex: 50, // 靈敏高，難逃
-        reward: 200, exp: 80, time: 3, desc: "受過格鬥訓練。" 
+    
+    'pickpocket': {
+        name: '扒手',
+        hp: 40,
+        str: 8,
+        spd: 15,
+        dex: 25,
+        reward: 30,
+        exp: 15,
+        time: 1,
+        desc: '手腳很快的小偷，但打架不行。',
+        loot: [
+            { item: 'stolen_wallet', chance: 0.4, qty: 1 },
+            { item: 'cheap_watch', chance: 0.3, qty: 1 }
+        ]
     },
-    'boss': { 
-        name: "區域角頭", hp: 1000, str: 150, spd: 100, dex: 150, // 極高，幾乎無法逃
-        reward: 5000, exp: 500, time: 6, desc: "這片街區的老大。" 
+    
+    // === 普通敵人 ===
+    'punk': {
+        name: '街頭小混混',
+        hp: 80,
+        str: 15,
+        spd: 10,
+        dex: 20,
+        reward: 60,
+        exp: 20,
+        time: 2,
+        desc: '愛惹事的小混混，身上有些值錢的東西。',
+        loot: [
+            { item: 'gold_chain_fake', chance: 0.2, qty: 1 },
+            { item: 'cigarette_pack', chance: 0.5, qty: 1 },
+            { item: 'switchblade', chance: 0.1, qty: 1 }
+        ]
+    },
+    
+    'drug_dealer': {
+        name: '毒販',
+        hp: 100,
+        str: 20,
+        spd: 15,
+        dex: 30,
+        reward: 150,
+        exp: 40,
+        time: 2,
+        desc: '販賣違禁品的危險人物。',
+        loot: [
+            { item: 'drugs', chance: 0.6, qty: 1 },
+            { item: 'dirty_money', chance: 0.4, qty: 1 },
+            { item: 'morphine', chance: 0.15, qty: 1 }
+        ]
+    },
+    
+    'thug': {
+        name: '黑幫打手',
+        hp: 200,
+        str: 40,
+        spd: 25,
+        dex: 50,
+        reward: 200,
+        exp: 80,
+        time: 3,
+        desc: '黑幫的武裝成員，身上有武器。',
+        loot: [
+            { item: 'wooden_bat', chance: 0.3, qty: 1 },
+            { item: 'bulletproof_vest', chance: 0.1, qty: 1 },
+            { item: 'gang_badge', chance: 0.5, qty: 1 }
+        ]
+    },
+    
+    // === 精英敵人 ===
+    'hitman': {
+        name: '職業殺手',
+        hp: 250,
+        str: 60,
+        spd: 70,
+        dex: 80,
+        reward: 500,
+        exp: 150,
+        time: 3,
+        desc: '訓練有素的殺手，非常危險。',
+        loot: [
+            { item: 'switchblade', chance: 0.5, qty: 1 },
+            { item: 'silencer', chance: 0.2, qty: 1 },
+            { item: 'blood_contract', chance: 0.3, qty: 1 }
+        ]
+    },
+    
+    'corrupt_cop': {
+        name: '腐敗警察',
+        hp: 300,
+        str: 50,
+        spd: 40,
+        dex: 60,
+        reward: 400,
+        exp: 120,
+        time: 4,
+        desc: '收黑錢的警察，裝備精良。',
+        loot: [
+            { item: 'police_badge', chance: 0.4, qty: 1 },
+            { item: 'handcuffs', chance: 0.5, qty: 1 },
+            { item: 'confiscated_goods', chance: 0.3, qty: 1 }
+        ]
+    },
+    
+    'gang_leader': {
+        name: '黑幫老大',
+        hp: 500,
+        str: 80,
+        spd: 60,
+        dex: 100,
+        reward: 1000,
+        exp: 300,
+        time: 5,
+        desc: '控制一方的黑幫頭目。',
+        loot: [
+            { item: 'ak47', chance: 0.05, qty: 1 },
+            { item: 'gold_ring', chance: 0.4, qty: 1 },
+            { item: 'gang_territory_map', chance: 0.5, qty: 1 }
+        ]
+    },
+    
+    // === Boss 級 ===
+    'boss': {
+        name: '城市主宰者',
+        hp: 1000,
+        str: 150,
+        spd: 100,
+        dex: 150,
+        reward: 5000,
+        exp: 500,
+        time: 6,
+        desc: '這座城市地下世界的統治者。',
+        loot: [
+            { item: 'boss_crown', chance: 1.0, qty: 1 },
+            { item: 'ak47', chance: 0.5, qty: 1 },
+            { item: 'legendary_armor', chance: 0.3, qty: 1 }
+        ]
     }
 };
 const achievementList = [
@@ -640,7 +954,7 @@ const mainQuests = [
 ];
 
 // 成就點數獎勵（基於現有成就系統）
-const achievementPointValues = {
+const achievementPointValues = [{
     // 根據成就難度給予不同點數
     money1k: 1, money10k: 2, money100k: 3, money1m: 5, money10m: 10,
     lv5: 1, lv10: 2, lv25: 3, lv50: 5,
@@ -649,7 +963,7 @@ const achievementPointValues = {
     house_apt: 2, house_pen: 3, house_vil: 5, house_isl: 10,
     full_gear: 2, weapon_master: 5, endgame: 10
     // ... 其他成就依照難度給 1-10 分
-};
+}];
 
 // 成就商店（用點數兌換）
 const achievementShop = {
@@ -690,14 +1004,5 @@ const achievementShop = {
     }
 };
 
-// 在 itemData 中新增成就之劍
-itemData['achievement_sword'] = {
-    name: '⚔️ 成就之劍',
-    cost: 0,
-    category: 'weapon',
-    type: 'weapon',
-    value: 200,
-    desc: '攻+200。只有真正的成就大師才能持有的神兵。'
-};
 
 let player = { ...defaultPlayerState };

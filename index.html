@@ -508,23 +508,21 @@
                 </div>
                 <div id="battle-log" class="battle-log"></div>
 
-                <button
-                  class="action-btn"
-                  onclick="attemptEscape()"
-                  style="
-                    width: 100%;
-                    background: #95a5a6;
-                    margin-top: 10px;
-                    border: 1px solid #7f8c8d;
-                  "
-                >
-                  🏃 嘗試逃跑 (檢定靈敏度)
-                </button>
-              </div>
-              <div id="enemy-selection">
-                <div id="enemy-list" class="grid-2"></div>
-              </div>
+                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+        <button class="action-btn" onclick="endCombat()" 
+            style="background: #2ecc71; border: 1px solid #27ae60;">
+            ✅ 離開戰鬥
+        </button>
+        <button class="action-btn" onclick="attemptEscape()" 
+            style="background: #95a5a6; border: 1px solid #7f8c8d;">
+            💨 逃跑
+        </button>
+        
+    </div>
             </div>
+            <div id="enemy-selection">
+            <div id="enemy-list" class="grid-2"></div>  <!-- ✓ 確保有這行 -->
+        </div>
           </div>
 
           <div id="casino" class="panel">
@@ -629,9 +627,8 @@
                 <button class="filter-btn" onclick="renderShop('drink')">
                   💧 飲料
                 </button>
-                <button class="filter-btn" onclick="renderShop('misc')">
-                  🍺 雜項
-                </button>
+                <button class="filter-btn" onclick="renderShop('loot')">🎁 戰利品</button>
+                <button class="filter-btn" onclick="renderShop('misc')">其他</button>
               </div>
               <h4>🛒 架上商品</h4>
               <div id="shop-list" class="grid-2"></div>
