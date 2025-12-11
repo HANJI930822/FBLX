@@ -507,18 +507,7 @@
                   </h3>
                 </div>
                 <div id="battle-log" class="battle-log"></div>
-
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-        <button  id="btn-leave-fight" class="action-btn" onclick="endCombat()" 
-            style="background: #2ecc71; border: 1px solid #27ae60;">
-            ✅ 離開戰鬥
-        </button>
-        <button class="action-btn" onclick="attemptEscape()" 
-            style="background: #95a5a6; border: 1px solid #7f8c8d;">
-            💨 逃跑
-        </button>
-        
-    </div>
+</div>
             </div>
             <div id="enemy-selection">
             <div id="enemy-list" class="grid-2"></div>  <!-- ✓ 確保有這行 -->
@@ -654,6 +643,17 @@
               <div id="ach-pagination" class="pagination-controls"></div>
             </div>
           </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+        <button  id="btn-leave-fight" class="action-btn" onclick="endCombat()" 
+            style="background: #2ecc71; border: 1px solid #27ae60;">
+            ✅ 離開戰鬥
+        </button>
+        <button class="action-btn" onclick="attemptEscape()" 
+            style="background: #95a5a6; border: 1px solid #7f8c8d;">
+            💨 逃跑
+        </button>
+        
+    
       </main>
     </div>
     <script src="data.js"></script>

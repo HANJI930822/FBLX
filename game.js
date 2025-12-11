@@ -822,6 +822,8 @@ function renderShop(category) {
     shopList.innerHTML = '';
     
     const allItems = Object.entries(itemData).filter(([id, item]) => {
+        if (item.cost <= 0) return false; 
+
         if (shopCategory === 'all') return true;
         return item.category === shopCategory;
     });
