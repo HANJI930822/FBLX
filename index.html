@@ -75,6 +75,13 @@
           <button onclick="showPanel('shop')" class="nav-btn">
             🏪 便利商店
           </button>
+          <button
+            onclick="showPanel('achievements')"
+            class="nav-btn"
+            style="color: #f39c12"
+          >
+            🏆 成就系統
+          </button>
         </nav>
         <div class="sidebar-footer">
           <button onclick="resetGame()" class="danger-btn">⚠️ 重置存檔</button>
@@ -83,49 +90,104 @@
 
       <main id="main-content">
         <header id="status-bar">
-            <div class="stat-row" style="display:flex; justify-content:space-between; width:100%; margin-bottom:10px; border-bottom:1px solid #333; padding-bottom:5px;">
-                <div class="stat-group">
-                    <div class="stat-label">📅 日期</div>
-                    <div class="stat-value" style="color:#fff">第 <span id="day-display">1</span> 天 <span id="time-display" style="color:#f1c40f">08:00</span></div>
-                </div>
-                <div class="stat-group">
-                    <div class="stat-label">💰 現金</div>
-                    <div class="stat-value money-text">$<span id="money">0</span></div>
-                </div>
-                <div class="stat-group">
-                    <div class="stat-label">⚔️ 戰力</div>
-                    <div class="stat-value" style="color: #e74c3c"><span id="total-atk">0</span></div>
-                </div>
+          <div
+            class="stat-row"
+            style="
+              display: flex;
+              justify-content: space-between;
+              width: 100%;
+              margin-bottom: 10px;
+              border-bottom: 1px solid #333;
+              padding-bottom: 5px;
+            "
+          >
+            <div class="stat-group">
+              <div class="stat-label">📅 日期</div>
+              <div class="stat-value" style="color: #fff">
+                第 <span id="day-display">1</span> 天
+                <span id="time-display" style="color: #f1c40f">08:00</span>
+              </div>
+            </div>
+            <div class="stat-group">
+              <div class="stat-label">💰 現金</div>
+              <div class="stat-value money-text">
+                $<span id="money">0</span>
+              </div>
+            </div>
+            <div class="stat-group">
+              <div class="stat-label">⚔️ 戰力</div>
+              <div class="stat-value" style="color: #e74c3c">
+                <span id="total-atk">0</span>
+              </div>
+            </div>
+          </div>
+
+          <div style="margin-bottom: 10px">
+            <div class="stat-label">
+              Lv.<span id="level">1</span>
+              <span id="job-title" style="color: #f1c40f">(職業)</span>
+            </div>
+            <div class="progress-track" style="height: 5px">
+              <div
+                id="exp-bar"
+                class="progress-fill"
+                style="width: 0%; background: #f1c40f"
+              ></div>
+            </div>
+          </div>
+
+          <div
+            style="
+              display: grid;
+              grid-template-columns: 1fr 1fr;
+              gap: 10px;
+              width: 100%;
+            "
+          >
+            <div class="stat-group">
+              <div class="stat-label">❤️ 生命 <span id="hp">0</span></div>
+              <div class="progress-track">
+                <div
+                  id="hp-bar"
+                  class="progress-fill hp-fill"
+                  style="width: 100%"
+                ></div>
+              </div>
             </div>
 
-            <div style="margin-bottom: 10px;">
-                 <div class="stat-label">Lv.<span id="level">1</span> <span id="job-title" style="color: #f1c40f">(職業)</span></div>
-                 <div class="progress-track" style="height: 5px">
-                    <div id="exp-bar" class="progress-fill" style="width: 0%; background: #f1c40f"></div>
-                 </div>
+            <div class="stat-group">
+              <div class="stat-label">⚡ 體力 <span id="energy">0</span></div>
+              <div class="progress-track">
+                <div
+                  id="energy-bar"
+                  class="progress-fill"
+                  style="width: 0%"
+                ></div>
+              </div>
             </div>
 
-            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; width:100%;">
-                <div class="stat-group">
-                    <div class="stat-label">❤️ 生命 <span id="hp">0</span></div>
-                    <div class="progress-track"><div id="hp-bar" class="progress-fill hp-fill" style="width: 100%;"></div></div>
-                </div>
-                
-                <div class="stat-group">
-                    <div class="stat-label">⚡ 體力 <span id="energy">0</span></div>
-                    <div class="progress-track"><div id="energy-bar" class="progress-fill" style="width: 0%;"></div></div>
-                </div>
-
-                <div class="stat-group">
-                    <div class="stat-label">🍗 飽食 <span id="hunger">0</span></div>
-                    <div class="progress-track"><div id="hunger-bar" class="progress-fill" style="width: 100%; background:#d35400;"></div></div>
-                </div>
-
-                <div class="stat-group">
-                    <div class="stat-label">💧 解渴 <span id="thirst">0</span></div>
-                    <div class="progress-track"><div id="thirst-bar" class="progress-fill" style="width: 100%; background:#3498db;"></div></div>
-                </div>
+            <div class="stat-group">
+              <div class="stat-label">🍗 飽食 <span id="hunger">0</span></div>
+              <div class="progress-track">
+                <div
+                  id="hunger-bar"
+                  class="progress-fill"
+                  style="width: 100%; background: #d35400"
+                ></div>
+              </div>
             </div>
+
+            <div class="stat-group">
+              <div class="stat-label">💧 解渴 <span id="thirst">0</span></div>
+              <div class="progress-track">
+                <div
+                  id="thirst-bar"
+                  class="progress-fill"
+                  style="width: 100%; background: #3498db"
+                ></div>
+              </div>
+            </div>
+          </div>
         </header>
 
         <div id="log-area">
@@ -365,17 +427,68 @@
           <div id="shop" class="panel">
             <div class="panel-header">24h 便利商店</div>
             <div class="panel-body">
-             <div class="shop-tabs" style="display: flex; gap: 5px; margin-bottom: 15px; overflow-x: auto; padding-bottom: 5px;">
-             <button class="filter-btn active" onclick="renderShop('all')">全部</button>
-             <button class="filter-btn" onclick="renderShop('weapon')">⚔️ 武器</button>
-             <button class="filter-btn" onclick="renderShop('armor')">🛡️ 防具</button>
-             <button class="filter-btn" onclick="renderShop('medical')">💊 醫療</button>
-             <button class="filter-btn" onclick="renderShop('food')">🍗 食物</button> <button class="filter-btn" onclick="renderShop('drink')">💧 飲料</button> <button class="filter-btn" onclick="renderShop('misc')">🍺 雜項</button>
-           </div>
+              <div
+                class="shop-tabs"
+                style="
+                  display: flex;
+                  gap: 5px;
+                  margin-bottom: 15px;
+                  overflow-x: auto;
+                  padding-bottom: 5px;
+                "
+              >
+                <button class="filter-btn active" onclick="renderShop('all')">
+                  全部
+                </button>
+                <button class="filter-btn" onclick="renderShop('weapon')">
+                  ⚔️ 武器
+                </button>
+                <button class="filter-btn" onclick="renderShop('armor')">
+                  🛡️ 防具
+                </button>
+                <button class="filter-btn" onclick="renderShop('medical')">
+                  💊 醫療
+                </button>
+                <button class="filter-btn" onclick="renderShop('food')">
+                  🍗 食物
+                </button>
+                <button class="filter-btn" onclick="renderShop('drink')">
+                  💧 飲料
+                </button>
+                <button class="filter-btn" onclick="renderShop('misc')">
+                  🍺 雜項
+                </button>
+              </div>
 
               <h4>🛒 架上商品</h4>
               <div id="shop-list" class="grid-2"></div>
               <div id="shop-pagination" class="pagination-controls"></div>
+            </div>
+          </div>
+          <div id="achievement-toast">
+            <div class="toast-icon">🏆</div>
+            <div class="toast-text">
+              <h4>成就解鎖！</h4>
+              <span id="toast-msg">名稱</span>
+            </div>
+          </div>
+
+          <div id="achievements" class="panel">
+            <div class="panel-header">成就列表</div>
+            <div class="panel-body">
+              <div class="card" style="margin-bottom: 20px; text-align: center">
+                <h4>完成進度</h4>
+                <div class="stat-big" id="achievement-progress">0 / 50</div>
+                <div class="progress-track">
+                  <div
+                    id="achievement-bar"
+                    class="progress-fill"
+                    style="width: 0%; background: #f39c12"
+                  ></div>
+                </div>
+              </div>
+
+              <div id="achievement-list" class="grid-2"></div>
             </div>
           </div>
         </div>

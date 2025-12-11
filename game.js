@@ -34,7 +34,10 @@ function initGame() {
             if(player.max_thirst === undefined) player.max_thirst = 100;
             if(player.day === undefined) player.day = 1;
             if(player.time === undefined) player.time = 8;
-
+            if (!player.stats) {
+                   player.stats = { fights_won:0, crimes_success:0, times_worked:0, items_bought:0, money_earned:0, food_eaten:0, days_lived:0 };
+             }
+            if (!player.achievements) player.achievements = [];
             document.getElementById('intro-screen').style.display = 'none';
             document.getElementById('app-container').style.display = 'flex';
             
@@ -48,6 +51,65 @@ function initGame() {
     } else {
         renderIntroJobs();
     }
+}
+//成就
+function checkAchievements() {
+    let newUnlock = false;
+
+    achievementList.forEach(ach => {
+        // 如果還沒解鎖，且符合條件
+        if (!player.achievements.includes(ach.id) && ach.check(player)) {
+            player.achievements.push(ach.id);
+            showToast(ach.name); // 跳出通知
+            log(`🏆 成就解鎖：${ach.name} - ${ach.desc}`, "success");
+            newUnlock = true;
+        }
+    });
+
+    // 如果有新成就，且目前正在看成就面板，就刷新列表
+    if (newUnlock && document.getElementById('achievements').classList.contains('active')) {
+        renderAchievements();
+    }
+}
+
+// 顯示成就通知動畫
+function showToast(achName) {
+    const toast = document.getElementById('achievement-toast');
+    const msg = document.getElementById('toast-msg');
+    msg.innerText = achName;
+    toast.classList.add('show');
+    
+    // 3秒後縮回去
+    setTimeout(() => {
+        toast.classList.remove('show');
+    }, 3000);
+}
+
+// 渲染成就面板
+function renderAchievements() {
+    const list = document.getElementById('achievement-list');
+    if (!list) return;
+    list.innerHTML = '';
+
+    // 更新進度條
+    const count = player.achievements.length;
+    const total = achievementList.length;
+    document.getElementById('achievement-progress').innerText = `${count} / ${total}`;
+    document.getElementById('achievement-bar').style.width = `${(count/total)*100}%`;
+
+    achievementList.forEach(ach => {
+        const isUnlocked = player.achievements.includes(ach.id);
+        const card = document.createElement('div');
+        card.className = `ach-card ${isUnlocked ? 'unlocked' : ''}`;
+        card.innerHTML = `
+            <h4>
+                ${ach.name} 
+                <span>${isUnlocked ? '✅' : '🔒'}</span>
+            </h4>
+            <p>${ach.desc}</p>
+        `;
+        list.appendChild(card);
+    });
 }
 function passTime(hours) {
     player.time += hours;
@@ -301,6 +363,8 @@ function buyItem(itemId) {
         player.money -= item.cost;
         if (player.inventory[itemId]) { player.inventory[itemId]++; } else { player.inventory[itemId] = 1; }
         log(`購買成功：${item.name}`, "success");
+        player.stats.items_bought++; 
+        checkAchievements();
         updateUI();
     } else { log("金錢不足！", "fail"); }
 }
@@ -408,7 +472,9 @@ function useItem(itemId) {
         player.thirst = Math.min(player.max_thirst, player.thirst + item.value);
         msg = "解渴";
     }
-
+    if (item.category === 'food' || item.category === 'drink') {
+        player.stats.food_eaten++;
+    }
     // 處理額外效果 (例如咖啡同時補口渴和體力)
     if (item.extraEffect) {
         if(item.extraEffect.energy) player.energy = Math.min(player.max_energy, player.energy + item.extraEffect.energy);
@@ -419,6 +485,7 @@ function useItem(itemId) {
     
     player.inventory[itemId]--;
     if (player.inventory[itemId] <= 0) delete player.inventory[itemId];
+    checkAchievements();
     updateUI();
 }
 
@@ -514,6 +581,7 @@ async function simulateFight(originalEnemy) {
 
     if (player.hp > 0) {
         player.money += originalEnemy.reward;
+        player.stats.fights_won++;
         let expGain = originalEnemy.exp || 10;
         addLog(`=== 勝利 ===`, "log-win");
         addLog(`獲得: $${originalEnemy.reward}, Exp +${expGain}`, "log-win");
@@ -526,6 +594,15 @@ async function simulateFight(originalEnemy) {
         await wait(1000); 
         gameOver();
     }
+    if (originalEnemy === enemyData['boss']) {
+             if (!player.achievements.includes('kill_boss')) {
+                 player.achievements.push('kill_boss');
+                 showToast('新秩序');
+                 log(`🏆 成就解鎖：新秩序`, "success");
+             }
+        }
+        
+        checkAchievements();
 }
 
 function endCombat() {
@@ -580,7 +657,8 @@ function work() {
     // 執行工作
     player.energy -= gameConfig.workCost;
     player.money += job.salary;
-    
+    player.stats.times_worked++; 
+    checkAchievements(); 
     // ★ 推進時間 (例如工作 4 小時)
     log(`打卡上班... (經過 ${gameConfig.workTime} 小時)`, "normal");
     passTime(gameConfig.workTime);
@@ -633,16 +711,24 @@ function commitCrime(crimeId) {
 
     const crime = crimeData[crimeId];
     const timeCost = crime.time || 1;
-
+    
     if (player.energy >= crime.cost) { // 修正為檢查 energy
         player.energy -= crime.cost;
         if (Math.random() < crime.successRate) {
             player.money += crime.reward;
+            player.stats.crimes_success++;
             gainExp(1);
             log(`犯罪成功：${crime.name} (+$${crime.reward})`, "success");
         } else { log(`犯罪失敗：${crime.failMsg}`, "fail"); }
+        if (crimeId === 'rob_granny' && !player.achievements.includes('master_thief')) {
+             player.achievements.push('master_thief');
+             showToast('神偷');
+             log(`🏆 成就解鎖：神偷`, "success");
+        }
+        checkAchievements();
         updateUI();
     } else { log("體力不足！", "fail"); }
+    
 }
 
 function gameTick() {
@@ -805,7 +891,9 @@ function showPanel(panelId) {
     document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
     const p = document.getElementById(panelId);
     if(p) p.classList.add('active');
-
+    if (panelId === 'achievements') {
+        renderAchievements();
+    }
     document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active'));
     const activeBtn = Array.from(document.querySelectorAll('.nav-btn')).find(btn => btn.getAttribute('onclick').includes(panelId));
     if (activeBtn) activeBtn.classList.add('active');
@@ -859,7 +947,10 @@ function updateUI() {
 
     if(document.getElementById('gym-str')) document.getElementById('gym-str').innerText = player.strength;
     if(document.getElementById('gym-spd')) document.getElementById('gym-spd').innerText = player.speed;
-    
+    checkAchievements();
+    if (document.getElementById('achievements').classList.contains('active')) {
+        renderAchievements();
+    }
     renderInventory();
 }
 

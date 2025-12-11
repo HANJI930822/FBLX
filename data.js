@@ -14,7 +14,18 @@ const defaultPlayerState = {
   house: 'shack', 
   completed_courses: [], 
   last_tick: Date.now(),
-  inventory: {}
+  inventory: {},
+  // ★ 新增：統計數據 (用來判斷成就)
+  stats: {
+      fights_won: 0,      // 戰鬥勝利次數
+      crimes_success: 0,  // 犯罪成功次數
+      times_worked: 0,    // 工作次數
+      items_bought: 0,    // 購買物品次數
+      money_earned: 0,    // 總賺取金錢 (累積)
+      food_eaten: 0,      // 吃食物次數
+      days_lived: 0       // 存活天數 (跟 day 連動)
+  },
+  achievements: []
 };
 
 const gameConfig = {
@@ -219,5 +230,69 @@ const enemyData = {
         desc: "這片街區的老大。" 
     }
 };
+const achievementList = [
+    // --- 財富類 (5) ---
+    { id: 'money_1k', name: '第一桶金', desc: '持有 $1,000', check: p => p.money >= 1000 },
+    { id: 'money_10k', name: '小資族', desc: '持有 $10,000', check: p => p.money >= 10000 },
+    { id: 'money_100k', name: '中產階級', desc: '持有 $100,000', check: p => p.money >= 100000 },
+    { id: 'money_1m', name: '百萬富翁', desc: '持有 $1,000,000', check: p => p.money >= 1000000 },
+    { id: 'money_10m', name: '千萬富豪', desc: '持有 $10,000,000', check: p => p.money >= 10000000 },
 
+    // --- 等級與屬性 (10) ---
+    { id: 'lv_5', name: '初出茅廬', desc: '達到等級 5', check: p => p.level >= 5 },
+    { id: 'lv_10', name: '街頭小有名氣', desc: '達到等級 10', check: p => p.level >= 10 },
+    { id: 'lv_25', name: '區域強者', desc: '達到等級 25', check: p => p.level >= 25 },
+    { id: 'lv_50', name: '傳說人物', desc: '達到等級 50', check: p => p.level >= 50 },
+    { id: 'str_50', name: '大力士', desc: '力量達到 50', check: p => p.strength >= 50 },
+    { id: 'str_200', name: '一拳超人', desc: '力量達到 200', check: p => p.strength >= 200 },
+    { id: 'spd_50', name: '飛毛腿', desc: '速度達到 50', check: p => p.speed >= 50 },
+    { id: 'spd_200', name: '閃電俠', desc: '速度達到 200', check: p => p.speed >= 200 },
+    { id: 'def_50', name: '銅牆鐵壁', desc: '防禦力達到 50', check: p => (p.strength*0.5 + (p.armor ? itemData[p.armor].value : 0)) >= 50 },
+    { id: 'balanced', name: '文武雙全', desc: '力量與速度都達到 100', check: p => p.strength >= 100 && p.speed >= 100 },
+
+    // --- 戰鬥類 (5) ---
+    { id: 'fight_1', name: '街頭霸王', desc: '贏得 1 場戰鬥', check: p => p.stats.fights_won >= 1 },
+    { id: 'fight_10', name: '格鬥家', desc: '贏得 10 場戰鬥', check: p => p.stats.fights_won >= 10 },
+    { id: 'fight_50', name: '戰神', desc: '贏得 50 場戰鬥', check: p => p.stats.fights_won >= 50 },
+    { id: 'fight_100', name: '百人斬', desc: '贏得 100 場戰鬥', check: p => p.stats.fights_won >= 100 },
+    { id: 'kill_boss', name: '新秩序', desc: '擊敗區域角頭 (Boss)', check: p => p.stats.fights_won > 0 /*需在戰鬥邏輯額外判斷*/ },
+
+    // --- 犯罪類 (5) ---
+    { id: 'crime_1', name: '手髒了', desc: '犯罪成功 1 次', check: p => p.stats.crimes_success >= 1 },
+    { id: 'crime_10', name: '慣犯', desc: '犯罪成功 10 次', check: p => p.stats.crimes_success >= 10 },
+    { id: 'crime_50', name: '通緝犯', desc: '犯罪成功 50 次', check: p => p.stats.crimes_success >= 50 },
+    { id: 'crime_100', name: '犯罪首腦', desc: '犯罪成功 100 次', check: p => p.stats.crimes_success >= 100 },
+    { id: 'master_thief', name: '神偷', desc: '成功搶劫老奶奶而不被抓', check: p => false /* 特殊觸發 */ },
+
+    // --- 工作類 (5) ---
+    { id: 'work_1', name: '打工仔', desc: '工作 1 次', check: p => p.stats.times_worked >= 1 },
+    { id: 'work_10', name: '社畜', desc: '工作 10 次', check: p => p.stats.times_worked >= 10 },
+    { id: 'work_50', name: '模範員工', desc: '工作 50 次', check: p => p.stats.times_worked >= 50 },
+    { id: 'work_100', name: '勞動楷模', desc: '工作 100 次', check: p => p.stats.times_worked >= 100 },
+    { id: 'high_salary', name: '高薪一族', desc: '從事日薪 > $500 的工作', check: p => jobData[p.job] && jobData[p.job].salary > 500 },
+
+    // --- 生存與生活 (10) ---
+    { id: 'survive_7', name: '倖存者', desc: '存活 7 天', check: p => p.day >= 7 },
+    { id: 'survive_30', name: '老練生存者', desc: '存活 30 天', check: p => p.day >= 30 },
+    { id: 'survive_100', name: '百日傳奇', desc: '存活 100 天', check: p => p.day >= 100 },
+    { id: 'eat_10', name: '吃貨', desc: '吃下 10 個食物', check: p => p.stats.food_eaten >= 10 },
+    { id: 'eat_50', name: '大胃王', desc: '吃下 50 個食物', check: p => p.stats.food_eaten >= 50 },
+    { id: 'house_apt', name: '有家可歸', desc: '搬進老公寓', check: p => p.house === 'apartment' },
+    { id: 'house_pen', name: '人生勝利組', desc: '搬進豪華頂樓', check: p => p.house === 'penthouse' },
+    { id: 'house_vil', name: '豪宅主人', desc: '搬進私人別墅', check: p => p.house === 'villa' },
+    { id: 'house_isl', name: '島主', desc: '搬進私人島嶼', check: p => p.house === 'island' },
+    { id: 'full_gear', name: '全副武裝', desc: '同時裝備武器和防具', check: p => p.weapon && p.armor },
+
+    // --- 消費與其他 (10) ---
+    { id: 'shop_1', name: '消費者', desc: '購買 1 次物品', check: p => p.stats.items_bought >= 1 },
+    { id: 'shop_50', name: '購物狂', desc: '購買 50 次物品', check: p => p.stats.items_bought >= 50 },
+    { id: 'edu_1', name: '好學', desc: '完成 1 門課程', check: p => p.completed_courses.length >= 1 },
+    { id: 'edu_3', name: '學霸', desc: '完成 3 門課程', check: p => p.completed_courses.length >= 3 },
+    { id: 'weapon_master', name: '武器大師', desc: '擁有 AK-47', check: p => p.inventory['ak47'] > 0 || p.weapon === 'ak47' },
+    { id: 'rich_kid', name: '含著金湯匙', desc: '選擇「富二代」開局', check: p => p.job === 'heir' },
+    { id: 'tough_guy', name: '硬漢', desc: '選擇「流浪漢」開局', check: p => p.job === 'hobo' },
+    { id: 'survive_danger', name: '命懸一線', desc: '在 HP < 5 的狀態下存活', check: p => p.hp > 0 && p.hp < 5 },
+    { id: 'max_stats', name: '人類極限', desc: '飽食與口渴都維持 100', check: p => p.hunger >= 100 && p.thirst >= 100 },
+    { id: 'endgame', name: '地下秩序', desc: '等級20 + 住別墅 + 持有AK47', check: p => p.level >= 20 && p.house === 'villa' && (p.weapon === 'ak47' || p.inventory['ak47']) }
+];
 let player = { ...defaultPlayerState };
