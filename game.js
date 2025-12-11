@@ -52,7 +52,10 @@ function initGame() {
             if (!player.ach_shop_purchased) player.ach_shop_purchased = [];
             if (!player.perm_buffs) player.perm_buffs = {};
             if (!player.enemyLevels) player.enemyLevels = {};
-    
+            if (!player.weather) {
+                player.weather = 'sunny';
+                updateWeather(); // 如果是舊存檔，隨機給一個天氣
+                }
     initDailyChallenges();
             player.time = Math.floor(player.time);
 
@@ -120,7 +123,21 @@ function checkShowTutorial() {
         }, 500);
     }
 }
-
+function updateWeather() {
+    const keys = Object.keys(weatherData);
+    const randomKey = keys[Math.floor(Math.random() * keys.length)];
+    player.weather = randomKey;
+    
+    const w = weatherData[randomKey];
+    log(`氣象報告：今天天氣是【${w.name}】`, "normal");
+    log(`影響：${w.desc}`, "normal");
+    
+    // 如果是酸雨，隨機扣點血
+    if (randomKey === 'acid_rain') {
+        player.hp = Math.max(1, player.hp - 5);
+        log("酸雨腐蝕了你的皮膚 (HP-5)", "fail");
+    }
+}
 //靈敏度
 function getPlayerDexterity() {
     let bonus = 0;
@@ -315,13 +332,36 @@ async function simulateFight(originalEnemy, enemyId) {
         // 玩家回合
         let totalAtk = getPlayerAttack();
         let dmg = Math.floor(totalAtk * (0.8 + Math.random() * 0.4));
+
+        let mySpd = getPlayerSpeed();
         let hitChance = 0.8 + (player.speed - originalEnemy.spd) * 0.01;
-        
+
+        if (player.weather === 'fog') hitChance -= 0.2;
+
         if (Math.random() > hitChance) dmg = 0; 
 
         if (dmg > 0) {
             enemyHp -= dmg;
-            addLog(`[R${rounds}] 你造成 ${dmg} 傷害 (敵剩: ${Math.max(0, enemyHp)})`, "log-player");
+            if (player.weapon) {
+            player.weapon_dura--;
+            // 檢查是否損壞
+            if (player.weapon_dura <= 0) {
+                const wName = itemData[player.weapon].name;
+                addLog(`💥 你的 ${wName} 壞掉了！`, "fail");
+                
+                // 移除裝備狀態
+                const brokenId = player.weapon;
+                player.weapon = null;
+                player.weapon_dura = 0;
+                
+                // 扣除背包數量
+                if (player.inventory[brokenId]) {
+                    player.inventory[brokenId]--;
+                    if (player.inventory[brokenId] <= 0) delete player.inventory[brokenId];
+                }
+            }
+        }
+            addLog(`[R${rounds}] 你造成 ${dmg} 傷害 (敵人剩: ${Math.max(0, enemyHp)})`, "log-player");
         } else {
             addLog(`[R${rounds}] 你的攻擊揮空了！`, "log-enemy");
         }
@@ -341,6 +381,22 @@ async function simulateFight(originalEnemy, enemyId) {
             addLog(`[R${rounds}] 你閃過了攻擊！`, "log-player");
         } else {
             player.hp = Math.max(0, player.hp - enemyDmg);
+            if (player.armor) {
+            player.armor_dura--;
+            if (player.armor_dura <= 0) {
+                const aName = itemData[player.armor].name;
+                addLog(`💥 你的 ${aName} 被打爛了！`, "fail");
+                
+                const brokenId = player.armor;
+                player.armor = null;
+                player.armor_dura = 0;
+                
+                if (player.inventory[brokenId]) {
+                    player.inventory[brokenId]--;
+                    if (player.inventory[brokenId] <= 0) delete player.inventory[brokenId];
+                }
+            }
+        }
             addLog(`[R${rounds}] 敵人造成 ${enemyDmg} 傷害。`, "log-enemy");
             updateUI(); 
         }
@@ -407,7 +463,10 @@ async function simulateFight(originalEnemy, enemyId) {
 
         checkAchievements();
         const leaveBtn = document.getElementById('btn-leave-fight');
+        const escapeBtn = document.getElementById('btn-escape'); 
+    
         if (leaveBtn) leaveBtn.style.display = 'block';
+        if (escapeBtn) escapeBtn.style.display = 'none';
         saveGame();
         renderEnemies();
     } else {
@@ -435,6 +494,9 @@ function passTime(hours) {
     if (player.time >= 24) {
         player.time -= 24;
         player.day += 1;
+
+        updateWeather();
+
         initDailyChallenges();
         const currentHouse = houseData[player.house] || houseData['shack'];
         const mult = currentHouse.decayMult || 1.0;
@@ -446,13 +508,17 @@ function passTime(hours) {
         player.thirst -= thirstLoss;
         
         log(`=== 第 ${player.day} 天開始 ===`, "normal");
-        log(`過了一夜，飢餓 -${hungerLoss}，口渴 -${thirstLoss}`, "fail");
-
+        //log(`過了一夜，飢餓 -${hungerLoss}，口渴 -${thirstLoss}`, "fail");
         checkSurvivalStatus();
     }
+
+    const currentWeather = weatherData[player.weather] || weatherData['sunny'];
+    const wEffect = currentWeather.effect;
+    const baseHungerLoss = hours * 2;
+    const baseThirstLoss = hours * 3;
     
-    player.hunger = Math.max(0, player.hunger - (hours * 2));
-    player.thirst = Math.max(0, player.thirst - (hours * 3));
+    player.hunger = Math.max(0, player.hunger - (baseHungerLoss * wEffect.hunger));
+    player.thirst = Math.max(0, player.thirst - (baseThirstLoss * wEffect.thirst));
     
     checkSurvivalStatus(hours);
 
@@ -562,7 +628,45 @@ function train(stat) {
         updateUI();
     } else { log("體力不足！", "fail"); }
 }
+function renderCrimes() {
+    const list = document.querySelector('.crime-list');
+    if (!list) return;
+    list.innerHTML = ''; // 清空原本內容
 
+    Object.entries(crimeData).forEach(([id, crime]) => {
+        const btn = document.createElement('button');
+        btn.className = 'crime-card';
+        btn.onclick = () => commitCrime(id);
+
+        // 根據成功率顯示不同顏色的圖示或邊框顏色（選用）
+        let icon = '🔫';
+        if (crime.successRate >= 0.8) icon = '🧱';
+        else if (crime.successRate >= 0.5) icon = '🛵';
+        else if (crime.successRate >= 0.2) icon = '💻';
+        else icon = '🏦';
+
+        // 顯示成功率提示
+        const ratePercent = Math.floor(crime.successRate * 100);
+        let rateColor = '#2ecc71';
+        if(crime.successRate < 0.5) rateColor = '#e74c3c';
+        else if(crime.successRate < 0.8) rateColor = '#f1c40f';
+
+        btn.innerHTML = `
+            <div class="crime-icon">${icon}</div>
+            <div class="crime-info" style="width: 100%;">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <h4 style="margin:0">${crime.name}</h4>
+                    <small style="color:${rateColor}">成功率 ${ratePercent}%</small>
+                </div>
+                <small style="color:#aaa; display:block; margin-top:4px;">${crime.desc}</small>
+                <div style="margin-top:5px; font-size:0.85rem; color:#888;">
+                    ⚡ -${crime.cost} 體力 ｜ 💰 可能獲利 $${crime.reward}
+                </div>
+            </div>
+        `;
+        list.appendChild(btn);
+    });
+}
 function commitCrime(crimeId) {
     if (player.hp <= 0) { log("在醫院無法犯罪！", "fail"); return; } 
 
@@ -575,7 +679,8 @@ function commitCrime(crimeId) {
         player.energy -= crime.cost; 
         
         passTime(timeCost);
-
+        const wBonus = weatherData[player.weather]?.effect.crimeRate || 0;
+        const finalSuccessRate = crime.successRate + wBonus;
         if (Math.random() < crime.successRate) {
             player.money += crime.reward;
             player.stats.crimes_success++;
@@ -591,6 +696,13 @@ function commitCrime(crimeId) {
         } else {
             if (player.daily_progress) player.daily_progress.crime_fails++; 
             log(`犯罪失敗：${crime.failMsg}`, "fail"); 
+            const damage = 5 + Math.floor((1 - crime.successRate) * 20);
+            player.hp = Math.max(0, player.hp - damage);
+            if (damage > 5) log(`你在逃跑過程中受了傷 (HP -${damage})`, "fail");
+            
+            if (player.hp <= 0) {
+                setTimeout(() => gameOver("被打死了肏"), 1000);
+            }
         }
         
         checkAchievements();
@@ -823,11 +935,10 @@ function renderShop(category) {
     
     const allItems = Object.entries(itemData).filter(([id, item]) => {
         if (item.cost <= 0) return false; 
-
         if (shopCategory === 'all') return true;
         return item.category === shopCategory;
     });
-
+    allItems.sort((a, b) => a[1].cost - b[1].cost);
     const totalPages = Math.ceil(allItems.length / SHOP_PAGE_SIZE);
     if (shopPage > totalPages && totalPages > 0) shopPage = 1;
     if (totalPages === 0) shopPage = 1;
@@ -1004,9 +1115,22 @@ function sellItem(itemId) {
 
 function equipItem(itemId) {
     const item = itemData[itemId];
-    if (item.type === 'weapon') { player.weapon = itemId; log(`裝備了武器：${item.name}`, "success"); } 
-    else if (item.type === 'armor') { player.armor = itemId; log(`穿上了防具：${item.name}`, "success"); }
-    else if (item.type === 'accessory') { player.accessory = itemId; log(`佩戴了飾品：${item.name}`, "success"); } // ★ 新增
+    const maxDura = item.max_dura;
+    if (item.type === 'weapon') { 
+        player.weapon = itemId; 
+        player.weapon_dura = maxDura;
+        log(`裝備了武器：${item.name} (耐久 ${maxDura})`, "success"); 
+    } 
+    else if (item.type === 'armor') { 
+        player.armor = itemId; 
+        player.armor_dura = maxDura;
+        log(`穿上了防具：${item.name} (耐久 ${maxDura})`, "success"); 
+    }
+    else if (item.type === 'accessory') { 
+        player.accessory = itemId; 
+        log(`佩戴了飾品：${item.name}`, "success"); 
+    } 
+    
     updateUI();
 }
 
@@ -1061,6 +1185,7 @@ function getPlayerAttack() {
     if (player.weapon && itemData[player.weapon]) {
         weaponDmg = itemData[player.weapon].value;
     }
+    const weatherBonus = weatherData[player.weather]?.effect.atk || 0;
     return player.strength + weaponDmg;
 }
 function getCurrentJobSalary() {
@@ -1079,7 +1204,12 @@ function getPlayerDefense() {
     if (player.armor && itemData[player.armor]) {
         armorDef = itemData[player.armor].value;
     }
+    const weatherBonus = weatherData[player.weather]?.effect.def || 0;
     return Math.floor(player.strength * 0.5) + armorDef; 
+}
+function getPlayerSpeed() {
+    const weatherBonus = weatherData[player.weather]?.effect.spd || 0;
+    return Math.floor(player.speed + weatherBonus);
 }
 function toggleMenu() {
     const sidebar = document.getElementById('sidebar');
@@ -1256,37 +1386,6 @@ function takeCourse(courseId) {
     updateUI();
 }
 
-function gambleCoinFlip() {
-    const input = document.getElementById('gamble-amount');
-    const resultDiv = document.getElementById('gamble-result');
-    const amount = parseInt(input.value);
-
-    if (isNaN(amount) || amount <= 0) {
-        log("請輸入有效的賭注金額！", "fail");
-        return;
-    }
-    if (player.money < amount) {
-        log("你的錢不夠！", "fail");
-        return;
-    }
-
-    player.money -= amount;
-    const isWin = Math.random() > 0.5;
-
-    if (isWin) {
-        const winAmount = amount * 2;
-        player.money += winAmount;
-        resultDiv.innerText = `贏了！獲得 $${winAmount}`;
-        resultDiv.style.color = "#2ecc71";
-        log(`賭場：你贏了 $${amount}！`, "success");
-    } else {
-        resultDiv.innerText = `輸了... 失去了 $${amount}`;
-        resultDiv.style.color = "#e74c3c";
-        log(`賭場：你輸掉了 $${amount}。`, "fail");
-    }
-    updateUI();
-}
-
 function log(message, type) {
     const logArea = document.getElementById('log-area');
     if(!logArea) return;
@@ -1342,6 +1441,7 @@ function showPanel(panelId) {
     // 6. 切換到對應面板時渲染內容
     if (panelId === 'achievements') renderAchievements();
     if (panelId === 'shop') renderShop();
+    if (panelId === 'crimes') renderCrimes();
     if (panelId === 'panel-daily') {
         renderDailyChallenges();
         renderMainQuests();
@@ -1375,41 +1475,64 @@ function gainExp(amount) {
     updateUI(); 
 }
 function updateUI() {
+    // 1. 基礎數值更新
     if(document.getElementById('money')) document.getElementById('money').innerText = player.money;
     if(document.getElementById('energy')) document.getElementById('energy').innerText = Math.floor(player.energy);
     if(document.getElementById('hp')) document.getElementById('hp').innerText = Math.floor(player.hp);
     if(document.getElementById('level')) document.getElementById('level').innerText = player.level;
     
+    // 2. 天氣顯示 (變數改名為 weatherEl)
+    const wName = weatherData[player.weather]?.name || '☀️ 晴朗';
+    const wDesc = weatherData[player.weather]?.desc || '';
+    
+    const weatherEl = document.getElementById('weather-display');
+    if (weatherEl) {
+        weatherEl.innerText = wName;
+        weatherEl.title = wDesc; 
+        
+        // 根據天氣變色
+        if (player.weather === 'rain' || player.weather === 'acid_rain') weatherEl.style.color = '#3498db'; 
+        else if (player.weather === 'heatwave') weatherEl.style.color = '#e74c3c'; 
+        else if (player.weather === 'fog') weatherEl.style.color = '#95a5a6'; 
+        else weatherEl.style.color = '#f1c40f'; 
+    }
+
+    // 3. 職業與稱號顯示 (已修正覆蓋問題)
     const job = jobData[player.job];
     const jobTitle = document.getElementById('job-title');
     if (jobTitle) {
-        let text = job ? `(${job.name})` : '';
+        let text = job ? `(${job.name})` : '(未知)';
         if (player.title) {
             text = `${player.title} ${text}`;
         }
         jobTitle.innerText = text;
     }
-    if (jobTitle) jobTitle.innerText = job ? `(${job.name})` : '(未知)';
 
+    // 4. 戰鬥屬性
     if(document.getElementById('total-atk')) document.getElementById('total-atk').innerText = getPlayerAttack();
-  if(document.getElementById('total-def')) document.getElementById('total-def').innerText = getPlayerDefense();
-    if(document.getElementById('total-dex')) document.getElementById('total-dex').innerText = getPlayerDexterity();
+    if(document.getElementById('total-def')) document.getElementById('total-def').innerText = getPlayerDefense();
+    // 判斷是否有 getPlayerSpeed 函數
+    if(document.getElementById('total-dex')) {
+         document.getElementById('total-dex').innerText = (typeof getPlayerSpeed === 'function') ? getPlayerSpeed() : player.speed;
+    }
+
+    // 5. 時間顯示
     const hours = Math.floor(player.time); 
-    const minutes = (player.time % 1) * 60; // 取小數部分 * 60
+    const minutes = Math.floor((player.time % 1) * 60);
     const timeStr = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
 
     document.getElementById('day-display').innerText = player.day;
     document.getElementById('time-display').innerText = timeStr;
 
-   if(document.getElementById('hunger')) {
+    // 6. 狀態條 (飢餓/口渴)
+    if(document.getElementById('hunger')) {
         document.getElementById('hunger').innerText = Math.floor(player.hunger);
         const hBar = document.getElementById('hunger-bar');
         hBar.style.width = `${Math.max(0, player.hunger)}%`;
         
-        // < 20 變紅， 0 變深紅
-        if (player.hunger <= 0) hBar.style.background = "#8e44ad"; // 紫色 (瀕死)
-        else if (player.hunger <= 20) hBar.style.background = "#e74c3c"; // 紅色 (警告)
-        else hBar.style.background = "#d35400"; // 正常橘色
+        if (player.hunger <= 0) hBar.style.background = "#8e44ad"; 
+        else if (player.hunger <= 20) hBar.style.background = "#e74c3c"; 
+        else hBar.style.background = "#d35400"; 
     }
     if(document.getElementById('thirst')) {
         document.getElementById('thirst').innerText = Math.floor(player.thirst);
@@ -1420,20 +1543,32 @@ function updateUI() {
         else if (player.thirst <= 20) tBar.style.background = "#e74c3c"; 
         else tBar.style.background = "#3498db"; 
     }
+
+    // 7. 裝備顯示 (耐久度防呆處理)
     let weaponName = "無 (徒手)";
-    if (player.weapon && itemData[player.weapon]) weaponName = itemData[player.weapon].name;
+    if (player.weapon && itemData[player.weapon]) {
+        const max = itemData[player.weapon].max_dura || 100;
+        weaponName = `${itemData[player.weapon].name} [${player.weapon_dura}/${max}]`;
+    }
+
     let armorName = "無 (裸體)";
-    if (player.armor && itemData[player.armor]) armorName = itemData[player.armor].name;
+    if (player.armor && itemData[player.armor]) {
+        const max = itemData[player.armor].max_dura || 100;
+        armorName = `${itemData[player.armor].name} [${player.armor_dura}/${max}]`;
+    }
+    
     let accName = "無 (空)";
     if (player.accessory && itemData[player.accessory]) accName = itemData[player.accessory].name;
     
-    const wDisplay = document.getElementById('weapon-display');
-    if(wDisplay) wDisplay.innerText = `${weaponName} / ${armorName} / ${accName}`;
-
+    // (變數改名為 weaponEl)
+    const weaponEl = document.getElementById('weapon-display');
+    if(weaponEl) weaponEl.innerText = `${weaponName} / ${armorName} / ${accName}`;
+    
+    // 8. 進度條 (經驗/血量/體力)
     const expPercent = Math.min(100, (player.exp / player.max_exp) * 100);
     const expBar = document.getElementById('exp-bar');
     if(expBar) expBar.style.width = `${expPercent}%`;
-
+    
     const hpPercent = Math.min(100, (player.hp / player.max_hp) * 100);
     const hpBar = document.getElementById('hp-bar');
     if(hpBar) hpBar.style.width = `${hpPercent}%`;
@@ -1442,17 +1577,20 @@ function updateUI() {
     const enBar = document.getElementById('energy-bar');
     if(enBar) enBar.style.width = `${energyPercent}%`;
 
+    // 9. 訓練數值顯示
     if(document.getElementById('gym-str')) document.getElementById('gym-str').innerText = player.strength;
     if(document.getElementById('gym-spd')) document.getElementById('gym-spd').innerText = player.speed;
+
+    // 10. 檢查成就與渲染面板
     checkAchievements();
     if (document.getElementById('achievements').classList.contains('active')) {
         renderAchievements();
     }
     renderInventory();
+    
     const restBtn = document.getElementById('btn-rest');
     if (restBtn && houseData[player.house]) {
         const restore = houseData[player.house].restore;
-        // 這裡顯示 "回復 10 / hr"
         restBtn.innerText = `🛌 開始睡覺 (回復 ${restore} / hr)`;
     }
     if (document.getElementById('estate').classList.contains('active')) {

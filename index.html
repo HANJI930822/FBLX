@@ -50,7 +50,6 @@
                     <li><strong>工作</strong>：穩定收入，但消耗體力和時間</li>
                     <li><strong>犯罪</strong>：高風險高回報，失敗會被抓</li>
                     <li><strong>戰鬥</strong>：擊敗敵人獲得獎勵和經驗</li>
-                    <li><strong>賭博</strong>：50% 機率翻倍或歸零</li>
                 </ul>
             </div>
             
@@ -138,13 +137,6 @@
           >
             ⚔️ 街頭火拚
           </button>
-          <button
-            onclick="showPanel('casino')"
-            class="nav-btn"
-            style="color: #9b59b6"
-          >
-            🎰 地下賭場
-          </button>
           <button onclick="showPanel('crimes')" class="nav-btn">
             🔫 街頭犯罪
           </button>
@@ -181,12 +173,12 @@
             "
           >
             <div class="stat-group">
-              <div class="stat-label">📅 日期</div>
-              <div class="stat-value" style="color: #fff">
-                第 <span id="day-display">1</span> 天
-                <span id="time-display" style="color: #f1c40f">08:00</span>
+              <div class="stat-label">📅 日期 & 天氣</div> <div class="stat-value" style="color: #fff">
+              第 <span id="day-display">1</span> 天
+                 <span id="weather-display" style="margin-left:5px; font-size:0.9rem; color:#3498db;">☀️ 晴朗</span>
+                  <br> <span id="time-display" style="color: #f1c40f">08:00</span>
+                </div>
               </div>
-            </div>
             <div class="stat-group">
               <div class="stat-label">💰 現金</div>
               <div class="stat-value money-text">
@@ -507,77 +499,28 @@
                   </h3>
                 </div>
                 <div id="battle-log" class="battle-log"></div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px;">
+          <button id="btn-leave-fight" class="action-btn" onclick="endCombat()" 
+              style="display: none; background: #2ecc71; border: 1px solid #27ae60;">
+              ✅ 離開戰鬥
+          </button>
+          
+          <button id="btn-escape" class="action-btn" onclick="attemptEscape()" 
+              style="background: #95a5a6; border: 1px solid #7f8c8d;">
+              💨 逃跑
+          </button>
+      </div>
 </div>
             </div>
             <div id="enemy-selection">
             <div id="enemy-list" class="grid-2"></div>  <!-- ✓ 確保有這行 -->
         </div>
           </div>
-
-          <div id="casino" class="panel">
-            <div class="panel-header">地下賭場</div>
-            <div class="panel-body">
-              <div class="card text-center">
-                <h3>幸運擲硬幣 (50% 勝率)</h3>
-                <p style="color: #aaa">翻倍或歸零，你敢賭嗎？</p>
-                <div style="margin: 20px 0">
-                  <input
-                    type="number"
-                    id="gamble-amount"
-                    placeholder="輸入賭注金額"
-                    style="
-                      padding: 10px;
-                      width: 150px;
-                      background: #333;
-                      color: white;
-                      border: 1px solid #555;
-                      border-radius: 4px;
-                    "
-                  />
-                </div>
-                <button
-                  class="action-btn"
-                  onclick="gambleCoinFlip()"
-                  style="background: #9b59b6; width: 100%"
-                >
-                  🎲 擲硬幣
-                </button>
-                <div
-                  id="gamble-result"
-                  style="margin-top: 15px; font-weight: bold; height: 20px"
-                ></div>
-              </div>
-            </div>
-          </div>
-
           <div id="crimes" class="panel">
             <div class="panel-header">街頭犯罪</div>
             <div class="panel-body">
               <div class="crime-list">
-                <button
-                  class="crime-card"
-                  onclick="commitCrime('search_trash')"
-                >
-                  <div class="crime-icon">🗑️</div>
-                  <div class="crime-info">
-                    <h4>翻垃圾桶</h4>
-                    <small>消耗 2 體力</small>
                   </div>
-                </button>
-                <button class="crime-card" onclick="commitCrime('shoplift')">
-                  <div class="crime-icon">🏪</div>
-                  <div class="crime-info">
-                    <h4>超商偷竊</h4>
-                    <small>消耗 5 體力</small>
-                  </div>
-                </button>
-                <button class="crime-card" onclick="commitCrime('rob_granny')">
-                  <div class="crime-icon">👵</div>
-                  <div class="crime-info">
-                    <h4>搶劫路人</h4>
-                    <small>消耗 15 體力</small>
-                  </div>
-                </button>
               </div>
             </div>
           </div>
@@ -624,7 +567,6 @@
               <div id="shop-pagination" class="pagination-controls"></div>
             </div>
           </div>
-
           <div id="achievements" class="panel">
             <div class="panel-header">成就列表</div>
             <div class="panel-body">
@@ -644,16 +586,6 @@
             </div>
           </div>
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-        <button  id="btn-leave-fight" class="action-btn" onclick="endCombat()" 
-            style="background: #2ecc71; border: 1px solid #27ae60;">
-            ✅ 離開戰鬥
-        </button>
-        <button class="action-btn" onclick="attemptEscape()" 
-            style="background: #95a5a6; border: 1px solid #7f8c8d;">
-            💨 逃跑
-        </button>
-        
-    
       </main>
     </div>
     <script src="data.js"></script>

@@ -5,8 +5,11 @@ const defaultPlayerState = {
   strength: 10, speed: 10, defense: 0,
   level: 1, exp: 0, max_exp: 100,
   job: null, 
+  weather: 'sunny',
   weapon: null, 
+  waapon_dura: 0,
   accessory: null,
+  armor_dura: 0,
   armor: null,
   hunger: 100, max_hunger: 100,
   thirst: 100, max_thirst: 100,
@@ -260,58 +263,107 @@ const itemData = {
     // --- 武器 (Weapon) ---
     // 從破爛到神器的進化史
     'brick': { 
-        name: "紅磚頭", cost: 50, category: 'weapon', type: 'weapon', value: 8, 
+        name: "紅磚頭", max_dura: 20,cost: 50, category: 'weapon', type: 'weapon', value: 8, 
         desc: "攻+8。隨手可得的溝通工具，丟出去還能撿回來。" 
     },
+    'switchblade': { 
+        name: "彈簧刀",
+        max_dura: 70, 
+        cost: 350, 
+        category: 'weapon', 
+        type: 'weapon', 
+        value: 18, 
+        desc: "攻+18。收納方便，彈出刀刃的聲音很嚇人。是許多剛入行殺手的最愛。" 
+    },
+    'brass_knuckles': { 
+        name: "指虎", cost: 250,max_dura: 50, category: 'weapon', type: 'weapon', value: 12, 
+        desc: "攻+12。近距離交流情感的最佳工具，方便攜帶。" 
+    },
+    'police_baton': { 
+        name: "警棍", cost: 1500, max_dura: 100,category: 'weapon', type: 'weapon', value: 35, 
+        desc: "攻+35。雖然是撿來的，但硬度保證，打在骨頭上的聲音很清脆。" 
+    },
+    'chainsaw': { 
+        name: "燃油電鋸", cost: 4500,max_dura: 150, category: 'weapon', type: 'weapon', value: 60, 
+        desc: "攻+60。雖然很重且聲音很大，但威嚇力滿點。德州特產。" 
+    },
+    'katana': { 
+        name: "武士刀", cost: 12000, max_dura: 250,category: 'weapon', type: 'weapon', value: 90, 
+        desc: "攻+90。鋒利無比，切子彈是誇張了點，但切西瓜絕對沒問題。" 
+    },
+    'rpg_launcher': { 
+        name: "RPG火箭筒", cost: 250000,max_dura: 1, category: 'weapon', type: 'weapon', value: 500, 
+        desc: "攻+500。一發入魂。對付單個敵人有點浪費，但爽度無價。" 
+    },
+    'laser_sword': { 
+        name: "光劍玩具(改)", cost: 500000,max_dura: 500, category: 'weapon', type: 'weapon', value: 800, 
+        desc: "攻+800。經過瘋狂科學家改裝的高能雷射束，這已經不是玩具了。" 
+    },
     'wooden_bat': { 
-        name: "木製球棒", cost: 500, category: 'weapon', type: 'weapon', value: 15, 
+        name: "木製球棒", cost: 500,max_dura: 40, category: 'weapon', type: 'weapon', value: 15, 
         desc: "攻+15。雖然有點舊，但用來講道理很有效。" 
     },
     'folding_chair': { 
-        name: "好折凳", cost: 1200, category: 'weapon', type: 'weapon', value: 30, 
+        name: "好折凳", cost: 1200,max_dura: 80, category: 'weapon', type: 'weapon', value: 30, 
         desc: "攻+30。七大武器之首！隱藏殺氣於無形，坐著也能殺人。" 
     },
     'keyboard': { 
-        name: "機械式鍵盤", cost: 2500, category: 'weapon', type: 'weapon', value: 45, 
+        name: "機械式鍵盤", cost: 2500,max_dura: 30, category: 'weapon', type: 'weapon', value: 45, 
         desc: "攻+45。鍵盤俠專用神器，兼具物理攻擊與精神傷害。" 
     },
     'crowbar': { 
-        name: "物理學聖劍", cost: 6000, category: 'weapon', type: 'weapon', value: 65, 
+        name: "物理學聖劍", cost: 6000,max_dura: 170, category: 'weapon', type: 'weapon', value: 65, 
         desc: "攻+65。理論上可以撬開任何東西，包括敵人的腦袋。" 
     },
     'nokia_3310': { 
-        name: "Nokia 3310", cost: 15000, category: 'weapon', type: 'weapon', value: 100, 
+        name: "Nokia 3310", cost: 15000,max_dura: 1500, category: 'weapon', type: 'weapon', value: 100, 
         desc: "攻+100。上古文明遺留的神器，據說連核彈都炸不壞。" 
     },
     'ak47': { 
-        name: "AK-47", cost: 80000, category: 'weapon', type: 'weapon', value: 350, 
+        name: "AK-47", cost: 80000,max_dura: 800, category: 'weapon', type: 'weapon', value: 350, 
         desc: "攻+350。這才叫火力壓制。鄰居這下會安靜了。" 
     },
 
     // --- 防具 (Armor) ---
     // 充滿生活智慧的防禦
     'cardboard_box': { 
-        name: "紙箱", cost: 100, category: 'armor', type: 'armor', value: 2, 
+        name: "紙箱", cost: 100,max_dura: 15, category: 'armor', type: 'armor', value: 2, 
         desc: "防+2。雖然擋不住子彈，但躲在裡面很有安全感 (Snake? Snake!)。" 
     },
     'pot_lid': { 
-        name: "不鏽鋼鍋蓋", cost: 800, category: 'armor', type: 'armor', value: 15, 
+        name: "不鏽鋼鍋蓋",max_dura: 40, cost: 800, category: 'armor', type: 'armor', value: 15, 
         desc: "防+15。低配版美國隊長盾牌，炒菜擋刀兩相宜。" 
     },
+    'leather_jacket': { 
+        name: "皮夾克", max_dura: 20,cost: 500, category: 'armor', type: 'armor', value: 10, 
+        desc: "防+10。擋不住刀槍，但防風防刮，重點是穿起來很帥。" 
+    },
+    'riot_shield': { 
+        name: "鎮暴盾牌",max_dura: 100, cost: 8000, category: 'armor', type: 'armor', value: 50, 
+        desc: "防+50。透明聚碳酸酯製成，給你滿滿的安全感。" 
+    },
+    'military_vest': { 
+        name: "特種戰術背心",max_dura: 200, cost: 35000, category: 'armor', type: 'armor', value: 75, 
+        desc: "防+75。多口袋設計，內嵌陶瓷防彈板，職業傭兵的首選。" 
+    },
+    'nano_suit': { 
+        name: "奈米生化裝", max_dura: 500,cost: 150000, category: 'armor', type: 'armor', value: 150, 
+        desc: "防+150。來自未來的黑科技，受損會自動修復（指衣服，不是你）。" 
+    },
     'bubble_wrap': { 
-        name: "氣泡紙套裝", cost: 2000, category: 'armor', type: 'armor', value: 25, 
+        name: "氣泡紙套裝", cost: 2000, max_dura: 30,category: 'armor', type: 'armor', value: 25, 
         desc: "防+25。被打的時候會發出「波波波」的聲音，極度舒壓。" 
     },
     'motorcycle_helmet': { 
-        name: "全罩安全帽", cost: 5000, category: 'armor', type: 'armor', value: 40, 
+        name: "全罩安全帽", cost: 5000,max_dura: 80, category: 'armor', type: 'armor', value: 40, 
         desc: "防+40。防禦力不錯，重點是沒人認得出你是誰。" 
     },
     'bulletproof_vest': { 
-        name: "防彈背心", cost: 20000, category: 'armor', type: 'armor', value: 60, 
+        name: "防彈背心", cost: 20000,max_dura: 200, category: 'armor', type: 'armor', value: 60, 
         desc: "防+60。雖然很重且不透氣，但總比身上多幾個洞好。" 
     },
     'iron_man_suit': { // Cosplay 用
-        name: "鋼鐵人皮套", cost: 50000, category: 'armor', type: 'armor', value: 90, 
+        name: "鋼鐵人皮套", cost: 50000, max_dura: 100,category: 'armor', type: 'armor', value: 90, 
         desc: "防+90。其實只是高品質 Cosplay 道具，但嚇唬人很有效。" 
     },
 
@@ -320,6 +372,22 @@ const itemData = {
     'tinfoil_hat': {
         name: "錫箔帽", cost: 50, category: 'accessory', type: 'accessory', value: 1,
         desc: "靈+1。防止政府與外星人讀取你的腦波。智商看起來-50。"
+    },
+    'sunglasses': { 
+        name: "墨鏡", cost: 200, category: 'accessory', type: 'accessory', value: 3, 
+        desc: "靈+3。戴上後夜晚視線變差，但帥氣度提升，閃避率似乎高了一點點？" 
+    },
+    'lucky_charm': { 
+        name: "開運御守", cost: 888, category: 'accessory', type: 'accessory', value: 10, 
+        desc: "靈+10。來自遙遠東方的神祕力量，據說能逢凶化吉。" 
+    },
+    'smart_watch': { 
+        name: "戰術手錶", cost: 8000, category: 'accessory', type: 'accessory', value: 40, 
+        desc: "靈+40。內建心率監測與敵情分析雷達（其實只是普通的GPS）。" 
+    },
+    'cyber_eye': { 
+        name: "義眼", cost: 60000, category: 'accessory', type: 'accessory', value: 100, 
+        desc: "靈+100。動態視力強化，敵人的動作在你眼中像慢動作重播。" 
     },
     'gold_chain_fake': { 
         name: "粗金項鍊(鍍金)", cost: 300, category: 'accessory', type: 'accessory', value: 5, 
@@ -359,6 +427,15 @@ const itemData = {
         name: "嗎啡", cost: 5000, category: 'medical', type: 'hp', value: 600, 
         desc: "回血+600。打下去就感覺不到痛了，不管是肉體還是心靈。" 
     },
+    'stimulant': { 
+        name: "腎上腺素針", cost: 1000, category: 'medical', type: 'energy', value: 100, 
+        desc: "體力+100, HP-10。透支身體極限，瞬間恢復滿體力，副作用是心悸。",
+        extraEffect: { hp: -10 }
+    },
+    'nano_bot_injection': { 
+        name: "奈米修復液", cost: 20000, category: 'medical', type: 'hp', value: 2000, 
+        desc: "回血+2000。將數百萬個微型機器人注入體內修復組織，只要沒斷頭都能救。" 
+    },
 
     // --- 食物 (Food) ---
     // 有風險的食物
@@ -385,7 +462,26 @@ const itemData = {
         name: "高級牛排", cost: 500, category: 'food', type: 'hunger', value: 100, 
         desc: "飽食+100, 心靈滿足。五星級享受，吃完覺得人生充滿希望。" 
     },
-
+    'protein_bar': { 
+        name: "高蛋白棒", cost: 40, category: 'food', type: 'hunger', value: 30, 
+        desc: "飽食+30, 體力+5。口感像嚼蠟，但對肌肉修復很有幫助。",
+        extraEffect: { energy: 5 }
+    },
+    'mre_ration': { 
+        name: "軍用口糧(MRE)", cost: 200, category: 'food', type: 'hunger', value: 100, 
+        desc: "飽食+100, 體力+20。熱量炸彈，吃一包可以撐一整天。",
+        extraEffect: { energy: 20 }
+    },
+    'espresso_double': { 
+        name: "雙倍濃縮咖啡", cost: 50, category: 'drink', type: 'energy', value: 20, 
+        desc: "體力+20, 口渴+10。苦到讓你懷疑人生，但精神馬上就來了。",
+        extraEffect: { thirst: 10 }
+    },
+    'whiskey': { 
+        name: "純麥威士忌", cost: 300, category: 'drink', type: 'thirst', value: 20, 
+        desc: "口渴+20, 體力-10, HP+20。烈酒消毒，喝了就不痛了。",
+        extraEffect: { energy: -10, hp: 20 }
+    },
     // --- 飲料 (Drink) ---
     'tap_water': { 
         name: "公園水龍頭", cost: 0, category: 'drink', type: 'thirst', value: 10, 
@@ -430,7 +526,34 @@ const itemData = {
     type: 'sellable',
     desc: '售價 $5。沾滿污垢的硬幣，但還能用。'
 },
-
+'gold_bar': {
+        name: '金條',
+        cost: 0,
+        sell_price: 5000,
+        category: 'loot',
+        type: 'sellable',
+        desc: '售價 $5,000。沈甸甸的黃金，硬通貨。'
+    },
+    'secret_files': {
+        name: '機密硬碟',
+        cost: 0,
+        sell_price: 2000,
+        category: 'loot',
+        type: 'sellable',
+        desc: '售價 $2,000。裡面存著市長的性醜聞照片，報社很樂意收購。'
+    },
+    'diamond': {
+        name: '血鑽石',
+        cost: 0,
+        sell_price: 15000,
+        category: 'loot',
+        type: 'sellable',
+        desc: '售價 $15,000。極度稀有，沾滿了鮮血與貪婪。'
+    },
+    'guitar': { 
+        name: "吉他", cost: 3000, category: 'misc', type: 'none', value: 0, 
+        desc: "一把舊吉他。雖然你不會彈，但在街頭背著它感覺像個流浪藝術家。" 
+    },
 'stolen_wallet': {
     name: '贓物錢包',
     cost: 0,
@@ -586,9 +709,56 @@ const itemData = {
 };
 
 const crimeData = {
-    search_trash: { name: "翻垃圾桶", cost: 2, time: 1, successRate: 0.9, reward: 5, failMsg: "無收穫。" },
-    shoplift: { name: "超商偷竊", cost: 5, time: 1, successRate: 0.6, reward: 50, failMsg: "被抓。" },
-    rob_granny: { name: "搶劫老奶奶", cost: 15, time: 1, successRate: 0.3, reward: 200, failMsg: "失敗。" }
+    // --- Lv.1 街頭小混混 (低風險) ---
+    search_trash: { 
+        name: "翻垃圾桶", cost: 2, time: 1, successRate: 0.95, reward: 5, 
+        desc: "雖然髒，但偶爾能撿到銅板。",
+        failMsg: "被清潔隊員罵了一頓。" 
+    },
+    vandalism: { 
+        name: "破壞公物", cost: 5, time: 1, successRate: 0.85, reward: 15, 
+        desc: "在牆上噴漆或是砸壞販賣機，把里面的零錢幹走。",
+        failMsg: "路人報警了，快跑！" 
+    },
+    shoplift: { 
+        name: "超商偷竊", cost: 8, time: 1, successRate: 0.7, reward: 50, 
+        desc: "趁店員微波便當的時候下手。",
+        failMsg: "店員抓住了你的手腕，並報了警。" 
+    },
+
+    // --- Lv.2 職業罪犯 (中風險) ---
+    steal_scooter: { 
+        name: "偷機車", cost: 15, time: 2, successRate: 0.5, reward: 300, 
+        desc: "接線發動只需 10 秒。賣給解體工廠。",
+        failMsg: "發動失敗，車主拿著球棒衝出來。" 
+    },
+    scam_call: { 
+        name: "詐騙電話", cost: 20, time: 1, successRate: 0.45, reward: 500, 
+        desc: "「喂？我是你兒子啦，我被綁架了...」",
+        failMsg: "對方是警察局長...尷尬了。" 
+    },
+    rob_granny: { 
+        name: "搶劫路人", cost: 25, time: 1, successRate: 0.4, reward: 800, 
+        desc: "挑軟柿子吃。但小心，有些老奶奶是退役特種兵。",
+        failMsg: "被對方的防狼噴霧噴滿臉。" 
+    },
+
+    // --- Lv.3 地下教父 (高風險) ---
+    protection_fee: { 
+        name: "收保護費", cost: 40, time: 3, successRate: 0.3, reward: 2000, 
+        desc: "去店家「關心」一下生意。如果不給錢，就讓他們生意做不下去。",
+        failMsg: "這家店有更大的幫派罩，你被打得鼻青臉腫。" 
+    },
+    atm_hack: { 
+        name: "駭入 ATM", cost: 60, time: 3, successRate: 0.2, reward: 5000, 
+        desc: "需要高超的技術。讓提款機像噴泉一樣吐錢。",
+        failMsg: "觸發靜音警報，防盜柵欄落下。" 
+    },
+    bank_heist: { 
+        name: "銀行搶案", cost: 100, time: 5, successRate: 0.1, reward: 50000, 
+        desc: "人生的一把大賭注。面具、槍枝、逃亡車輛，缺一不可。",
+        failMsg: "SWAT 特警隊包圍了現場，任務失敗。" 
+    }
 };
 
 const enemyData = {
@@ -737,10 +907,11 @@ const enemyData = {
         time: 5,
         desc: '控制一方的黑幫頭目。',
         loot: [
-            { item: 'ak47', chance: 0.05, qty: 1 },
-            { item: 'gold_ring', chance: 0.4, qty: 1 },
-            { item: 'gang_territory_map', chance: 0.5, qty: 1 }
-        ]
+        { item: 'ak47', chance: 0.05, qty: 1 },
+        { item: 'gold_ring', chance: 0.4, qty: 1 },
+        { item: 'gang_territory_map', chance: 0.5, qty: 1 },
+        { item: 'gold_bar', chance: 0.1, qty: 1 } // 新增掉落金條
+]
     },
     
     // === Boss 級 ===
@@ -1016,7 +1187,39 @@ const dailyChallengePool = [
         reward: { money: 400, exp: 80 }
     }
 ];
-
+const weatherData = {
+    'sunny': { 
+        name: '☀️ 晴朗', 
+        desc: '視野清晰，適合工作與戰鬥。',
+        effect: { hunger: 1.0, thirst: 1.0, atk: 0, def: 0, spd: 0, crimeRate: 0 } 
+    },
+    'rain': { 
+        name: '🌧️ 暴雨', 
+        desc: '行動不便，移動速度下降，但大家都躲在家裡，犯罪成功率提升。',
+        effect: { hunger: 1.1, thirst: 0.8, atk: 0, def: 0, spd: -10, crimeRate: 0.1 } 
+    },
+    'heatwave': { 
+        name: '🔥 熱浪', 
+        desc: '極度炎熱，口渴速度加倍！體力消耗快，不宜久戰。',
+        effect: { hunger: 0.8, thirst: 2.0, atk: -5, def: -5, spd: 0, crimeRate: 0 } 
+    },
+    'fog': { 
+        name: '🌫️ 濃霧', 
+        desc: '能見度低，戰鬥命中率下降，偷竊較容易得手。',
+        effect: { hunger: 1.0, thirst: 1.0, atk: 0, def: 0, spd: 0, crimeRate: 0.15 } 
+        // 戰鬥命中率會在戰鬥邏輯額外處理
+    },
+    'cold_snap': { 
+        name: '❄️ 寒流', 
+        desc: '氣溫驟降，身體需要更多熱量，容易飢餓。行動變得僵硬。',
+        effect: { hunger: 1.5, thirst: 0.8, atk: 0, def: 0, spd: -5, crimeRate: -0.1 } 
+    },
+    'acid_rain': { 
+        name: '🤢 酸雨', 
+        desc: '工業區特產。淋雨會受傷，防禦力變得脆弱。',
+        effect: { hunger: 1.0, thirst: 1.0, atk: 0, def: -10, spd: 0, crimeRate: 0 } 
+    }
+};
 
 // 主線任務（階段性目標）
 const mainQuests = [
