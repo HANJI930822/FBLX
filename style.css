@@ -412,38 +412,53 @@ body {
     border-radius: 4px;
 }
 
-
 #achievement-toast {
-        width: 90%;
-        left: 5%;           /* 水平置中 (5% + 90%寬度) */
-        right: auto;        /* 清除電腦版的 right 設定 */
-        
-        bottom: -150px;     /* ★ 關鍵修正：預設藏在螢幕最下方 (看不到的地方) */
-        
-        transition: bottom 0.5s cubic-bezier(0.68, -0.55, 0.27, 1.55); /* 改用 bottom 做動畫 */
-        z-index: 9999;
-    }
-
-    #achievement-toast.show {
-        right: auto;        /* 保持清除 */
-        bottom: 80px;       /* ★ 關鍵修正：滑上來顯示 (80px 是為了避開底部導覽列) */
-    }
+    /* 固定定位：永遠浮在視窗上 */
+    position: fixed;
+    
+    /* 位置設定：預設藏在螢幕正下方 (畫面外) */
+    left: 50%;
+    bottom: -100px; /* 藏起來 */
+    transform: translateX(-50%); /* 水平置中 */
+    
+    /* 卡片外觀 */
+    background: #252525; /* 深灰底色 */
+    color: #fff;
+    min-width: 300px;
+    padding: 15px 25px;
+    border-radius: 50px; /* 膠囊狀圓角 */
+    border: 2px solid #f39c12; /* 金色邊框 */
+    box-shadow: 0 10px 30px rgba(0,0,0,0.8); /* 強烈陰影，增加立體感 */
+    
+    /* 排版 */
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    z-index: 10000; /* 最上層 */
+    
+    /* 動畫過渡 */
+    transition: bottom 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275); /* 彈跳效果 */
+}
+#a#achievement-toast.show {
+    bottom: 30px; /* 停在距離底部 30px 的地方 */
+}
 .toast-icon {
     font-size: 2rem;
-    margin-right: 15px;
 }
 
 .toast-text h4 {
     margin: 0;
-    color: #f39c12;
+    color: #f39c12; /* 金色標題 */
     font-size: 1rem;
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 1px;
 }
 
 .toast-text span {
     font-size: 0.9rem;
-    color: #fff;
+    color: #ddd;
 }
-
 /* 成就卡片 */
 .ach-card {
     background: #1a1a1a;

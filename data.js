@@ -14,8 +14,6 @@ const defaultPlayerState = {
   time: 8,
   starvation_hours: 0,
   dehydration_hours: 0,
-  starvationLimit: 168, 
-  dehydrationLimit: 72,
   house: 'shack', 
   completed_courses: [], 
   last_tick: Date.now(),
@@ -44,6 +42,8 @@ const gameConfig = {
   trainTime: 1,      // 訓練消耗時間 (小時)
   crimeCost: 10,     // 犯罪消耗體力 (依難度不同，此為基礎)
   crimeTime: 1,      // 犯罪消耗時間
+  starvationLimit: 168, 
+  dehydrationLimit: 72,
   // 每天結束時扣除的生存值
   dailyHungerDecay: 40, 
   dailyThirstDecay: 60 
@@ -182,12 +182,12 @@ const itemData = {
         desc: "雖然硬得像石頭，但還能果腹。" 
     },
     'hamburger': { 
-        name: "雙層漢堡", cost: 50, category: 'food', type: 'hunger', value: 50, 
+        name: "雙層漢堡", cost: 80, category: 'food', type: 'hunger', value: 50, 
         desc: "熱量炸彈，美味又飽足 (飽食度+50)。" 
     },
     'steak': { 
-        name: "高級牛排", cost: 200, category: 'food', type: 'hunger', value: 100, 
-        desc: "五星級享受 (飽食度全滿)。" 
+        name: "發霉夜市牛排", cost: 120, category: 'food', type: 'hunger', value: 70, 
+        desc: "牛排吃到飽 (飽食度全滿)。" 
     },
 
     // --- 飲料 (category: drink) - 原本 food 的飲料移過來 ---
@@ -273,7 +273,7 @@ const achievementList = [
     { id: 'fight_10', name: '格鬥家', desc: '贏得 10 場戰鬥', check: p => p.stats.fights_won >= 10 },
     { id: 'fight_50', name: '戰神', desc: '贏得 50 場戰鬥', check: p => p.stats.fights_won >= 50 },
     { id: 'fight_100', name: '百人斬', desc: '贏得 100 場戰鬥', check: p => p.stats.fights_won >= 100 },
-    { id: 'kill_boss', name: '新秩序', desc: '擊敗區域角頭 (Boss)', check: p => p.stats.fights_won > 0 /*需在戰鬥邏輯額外判斷*/ },
+    { id: 'kill_boss', name: '新秩序', desc: '擊敗區域角頭 (Boss)', check: p => false /*需在戰鬥邏輯額外判斷*/ },
 
     // --- 犯罪類 (5) ---
     { id: 'crime_1', name: '手髒了', desc: '犯罪成功 1 次', check: p => p.stats.crimes_success >= 1 },
@@ -287,7 +287,7 @@ const achievementList = [
     { id: 'work_10', name: '社畜', desc: '工作 10 次', check: p => p.stats.times_worked >= 10 },
     { id: 'work_50', name: '模範員工', desc: '工作 50 次', check: p => p.stats.times_worked >= 50 },
     { id: 'work_100', name: '勞動楷模', desc: '工作 100 次', check: p => p.stats.times_worked >= 100 },
-    { id: 'high_salary', name: '高薪一族', desc: '從事日薪 > $500 的工作', check: p => jobData[p.job] && jobData[p.job].salary > 500 },
+    { id: 'high_salary', name: '高薪一族', desc: '從事日薪 >= $80 的工作', check: p => jobData[p.job] && jobData[p.job].salary > 80 },
 
     // --- 生存與生活 (10) ---
     { id: 'survive_7', name: '倖存者', desc: '存活 7 天', check: p => p.day >= 7 },
@@ -311,6 +311,6 @@ const achievementList = [
     { id: 'tough_guy', name: '硬漢', desc: '選擇「流浪漢」開局', check: p => p.job === 'hobo' },
     { id: 'survive_danger', name: '命懸一線', desc: '在 HP < 5 的狀態下存活', check: p => p.hp > 0 && p.hp < 5 },
     { id: 'max_stats', name: '人類極限', desc: '飽食與口渴都維持 100', check: p => p.hunger >= 100 && p.thirst >= 100 },
-    { id: 'endgame', name: '地下秩序', desc: '等級20 + 住別墅 + 持有AK47', check: p => p.level >= 20 && p.house === 'villa' && (p.weapon === 'ak47' || p.inventory['ak47']) }
+    { id: 'endgame', name: '地下秩序', desc: '等級20 + 住別墅 + 持有AK47', check: p => p.level >= 20 && p.house === 'villa' && (p.weapon === 'ak47' || (p.inventory['ak47'] && p.inventory['ak47'] > 0)) }
 ];
 let player = { ...defaultPlayerState };

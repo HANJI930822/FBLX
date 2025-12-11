@@ -54,6 +54,10 @@ function initGame() {
             // 修正 NaN
             if (isNaN(player.energy)) player.energy = 100;
             if (isNaN(player.hp)) player.hp = 100;
+            if (isNaN(player.hunger)) player.hunger = 100;
+            if (isNaN(player.thirst)) player.thirst = 100;
+            if (isNaN(player.starvation_hours)) player.starvation_hours = 0;
+            if (isNaN(player.dehydration_hours)) player.dehydration_hours = 0;
 
             document.getElementById('intro-screen').style.display = 'none';
             document.getElementById('app-container').style.display = 'flex';
@@ -126,7 +130,7 @@ function startGameLoop() {
     renderJobs();
     renderEstate();
     renderEdu();
-
+    renderAchievements();
     updateUI(); 
     
     if (window.gameInterval) clearInterval(window.gameInterval);
@@ -263,19 +267,19 @@ async function simulateFight(originalEnemy) {
     passTime(timeCost);
 
     if (player.hp > 0) {
-        player.money += originalEnemy.reward;
+        player.stats.money_earned += originalEnemy.reward;
         player.stats.fights_won++;
+
         let expGain = originalEnemy.exp || 10;
         
         addLog(`=== 勝利 ===`, "log-win");
         addLog(`獲得: $${originalEnemy.reward}, Exp +${expGain}`, "log-win");
-        // ★ 修改：顯示戰鬥時長
         addLog(`激戰 ${rounds} 回合，經過了 ${timeCost} 小時。`, "normal");
-        
+
         gainExp(expGain);
         updateUI();
 
-        if (originalEnemy === enemyData['boss']) {
+        if (window.currentEnemyId === 'boss') {
              if (!player.achievements.includes('kill_boss')) {
                  player.achievements.push('kill_boss');
                  showToast('新秩序');
@@ -399,6 +403,7 @@ function work() {
     player.energy -= gameConfig.workCost;
     player.money += job.salary;
     player.stats.times_worked++; 
+    player.stats.money_earned += job.salary;
     checkAchievements(); 
     
     log(`打卡上班... (經過 ${gameConfig.workTime} 小時)`, "normal");
@@ -438,6 +443,7 @@ function commitCrime(crimeId) {
         if (Math.random() < crime.successRate) {
             player.money += crime.reward;
             player.stats.crimes_success++;
+            player.stats.money_earned += crime.reward;
             gainExp(1);
             log(`犯罪成功：${crime.name} (+$${crime.reward})`, "success");
             
@@ -636,10 +642,16 @@ function changeShopPage(direction) {
 
 function buyItem(itemId) {
     const item = itemData[itemId];
+    let finalCost = item.cost;
+    if (player.completed_courses.includes('business_course')) {
+        finalCost = Math.floor(finalCost * 0.9);
+    }
     if (player.money >= item.cost) {
         player.money -= item.cost;
         if (player.inventory[itemId]) { player.inventory[itemId]++; } else { player.inventory[itemId] = 1; }
-        log(`購買成功：${item.name}`, "success");
+        let costMsg = `$${finalCost}`;
+        if (finalCost < item.cost) costMsg += ` (原價$${item.cost})`;
+        log(`購買成功：${item.name} 花費 ${costMsg}`, "success");
         player.stats.items_bought++; 
         checkAchievements();
         updateUI();
@@ -995,25 +1007,32 @@ function log(message, type) {
 }
 
 function showPanel(panelId) {
+// 1. 隱藏所有面板
     document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
-    
+// 2. 顯示目標面板
     const targetPanel = document.getElementById(panelId);
     if(targetPanel) targetPanel.classList.add('active');
-
+// 3. 更新按鈕狀態
     document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active'));
     const activeBtn = Array.from(document.querySelectorAll('.nav-btn')).find(btn => btn.getAttribute('onclick').includes(panelId));
     if (activeBtn) activeBtn.classList.add('active');
-
+// 4. 手機版收合選單
     const sidebar = document.getElementById('sidebar');
     if (window.innerWidth <= 768) {
         sidebar.classList.remove('active');
     }
-
+// 5. 戰鬥狀態處理
     if (panelId !== 'fight' && isFighting) {
         isFighting = false;
         document.getElementById('enemy-selection').style.display = 'block';
         document.getElementById('combat-screen').style.display = 'none';
         log("你離開了戰鬥現場。", "normal");
+    }
+    if (panelId === 'achievements') {
+        renderAchievements();
+    }
+    if (panelId === 'shop') {
+        renderShop();
     }
 }
 function gainExp(amount) {
