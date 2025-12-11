@@ -53,6 +53,8 @@ function initGame() {
     }
 }
 //成就
+const ACH_PAGE_SIZE = 6; // 每頁顯示 6 個成就
+let achPage = 1;
 function checkAchievements() {
     let newUnlock = false;
 
@@ -91,13 +93,29 @@ function renderAchievements() {
     if (!list) return;
     list.innerHTML = '';
 
-    // 更新進度條
+    // 1. 計算總體進度 (這部分顯示全部，不分頁)
     const count = player.achievements.length;
     const total = achievementList.length;
-    document.getElementById('achievement-progress').innerText = `${count} / ${total}`;
-    document.getElementById('achievement-bar').style.width = `${(count/total)*100}%`;
+    // 使用 ?. 防呆，避免元素還沒載入時報錯
+    if(document.getElementById('achievement-progress')) {
+        document.getElementById('achievement-progress').innerText = `${count} / ${total}`;
+        document.getElementById('achievement-bar').style.width = `${(count/total)*100}%`;
+    }
 
-    achievementList.forEach(ach => {
+    // 2. 計算分頁
+    const totalPages = Math.ceil(total / ACH_PAGE_SIZE);
+    
+    // 防呆：頁碼修正
+    if (achPage > totalPages && totalPages > 0) achPage = totalPages;
+    if (achPage < 1) achPage = 1;
+
+    // 3. 切割陣列 (只取當前頁面的成就)
+    const startIndex = (achPage - 1) * ACH_PAGE_SIZE;
+    const endIndex = startIndex + ACH_PAGE_SIZE;
+    const itemsToShow = achievementList.slice(startIndex, endIndex);
+
+    // 4. 渲染卡片
+    itemsToShow.forEach(ach => {
         const isUnlocked = player.achievements.includes(ach.id);
         const card = document.createElement('div');
         card.className = `ach-card ${isUnlocked ? 'unlocked' : ''}`;
@@ -110,6 +128,31 @@ function renderAchievements() {
         `;
         list.appendChild(card);
     });
+
+    // 5. 渲染分頁按鈕 (動態生成)
+    let paginationDiv = document.getElementById('ach-pagination');
+    if (!paginationDiv) {
+        paginationDiv = document.createElement('div');
+        paginationDiv.id = 'ach-pagination';
+        paginationDiv.className = 'pagination-controls';
+        // 插在 achievement-list 的後面 (panel-body 底部)
+        list.parentNode.appendChild(paginationDiv);
+    }
+
+    if (totalPages <= 1) {
+        paginationDiv.style.display = 'none';
+    } else {
+        paginationDiv.style.display = 'flex';
+        paginationDiv.innerHTML = `
+            <button class="page-btn" onclick="changeAchPage(-1)" ${achPage === 1 ? 'disabled' : ''}>◀</button>
+            <span class="page-info">${achPage} / ${totalPages}</span>
+            <button class="page-btn" onclick="changeAchPage(1)" ${achPage === totalPages ? 'disabled' : ''}>▶</button>
+        `;
+    }
+}
+function changeAchPage(direction) {
+    achPage += direction;
+    renderAchievements(); 
 }
 function passTime(hours) {
     player.time += hours;
