@@ -82,6 +82,44 @@ function initGame() {
         renderIntroJobs();
     }
 }
+// === 新手教學系統 ===
+
+// 顯示教學彈窗
+function showTutorial() {
+    const overlay = document.getElementById('tutorial-overlay');
+    if (overlay) {
+        overlay.style.display = 'flex';
+    }
+}
+
+// 關閉教學彈窗
+function closeTutorial() {
+    const overlay = document.getElementById('tutorial-overlay');
+    const dontShow = document.getElementById('tutorial-dont-show');
+    
+    if (overlay) {
+        overlay.style.display = 'none';
+    }
+    
+    // 如果勾選「不再顯示」，儲存到 localStorage
+    if (dontShow && dontShow.checked) {
+        localStorage.setItem('hideTutorial', 'true');
+    }
+}
+
+// 檢查是否需要顯示教學
+function checkShowTutorial() {
+    const hideTutorial = localStorage.getItem('hideTutorial');
+    
+    // 如果沒有勾選過「不再顯示」，就顯示教學
+    if (hideTutorial !== 'true') {
+        // 延遲 500ms 顯示，讓遊戲介面先載入
+        setTimeout(() => {
+            showTutorial();
+        }, 500);
+    }
+}
+
 //靈敏度
 function getPlayerDexterity() {
     let bonus = 0;
@@ -649,6 +687,7 @@ function chooseStartJob(jobId) {
     log(`新遊戲開始！你的身分是：${job.name}`, "success");
     saveGame(); // 立即存檔
     startGameLoop();
+    checkShowTutorial();
 }
 function changeJobPage(direction) {
     jobPage += direction;
@@ -1126,21 +1165,48 @@ function log(message, type) {
 }
 
 function showPanel(panelId) {
-// 1. 隱藏所有面板
+    // 1. 移除所有面板的 active
     document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
-// 2. 顯示目標面板
+    
+    // 2. 顯示目標面板
     const targetPanel = document.getElementById(panelId);
     if(targetPanel) targetPanel.classList.add('active');
-// 3. 更新按鈕狀態
+    
+    // 3. 移除所有按鈕的 active
     document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active'));
-    const activeBtn = Array.from(document.querySelectorAll('.nav-btn')).find(btn => btn.getAttribute('onclick').includes(panelId));
+    
+    // ★ 修改這段：使用更精確的匹配
+    const activeBtn = Array.from(document.querySelectorAll('.nav-btn')).find(btn => {
+        const onclick = btn.getAttribute('onclick');
+        if (!onclick) return false;
+        
+        // 提取 showPanel() 中的參數
+        const match = onclick.match(/showPanel\(['"](.+?)['"]\)/);
+        if (match) {
+            return match[1] === panelId;  // ✓ 精確比對，不是 includes
+        }
+        return false;
+    });
+    
     if (activeBtn) activeBtn.classList.add('active');
-// 4. 手機版收合選單
+    
+    // 4. 手機版：關閉側邊欄
     const sidebar = document.getElementById('sidebar');
     if (window.innerWidth <= 768) {
         sidebar.classList.remove('active');
     }
-// 5.切換到對應面板時渲染
+    
+    // 5. 如果離開戰鬥面板，停止戰鬥
+    if (panelId !== 'fight' && isFighting) {
+        isFighting = false;
+        document.getElementById('enemy-selection').style.display = 'block';
+        document.getElementById('combat-screen').style.display = 'none';
+        log("你逃離了戰鬥。", "normal");
+    }
+    
+    // 6. 切換到對應面板時渲染內容
+    if (panelId === 'achievements') renderAchievements();
+    if (panelId === 'shop') renderShop();
     if (panelId === 'panel-daily') {
         renderDailyChallenges();
         renderMainQuests();
@@ -1148,20 +1214,9 @@ function showPanel(panelId) {
     if (panelId === 'panel-ach-shop') {
         renderAchShop();
     }
-// 5. 戰鬥狀態處理
-    if (panelId !== 'fight' && isFighting) {
-        isFighting = false;
-        document.getElementById('enemy-selection').style.display = 'block';
-        document.getElementById('combat-screen').style.display = 'none';
-        log("你離開了戰鬥現場。", "normal");
-    }
-    if (panelId === 'achievements') {
-        renderAchievements();
-    }
-    if (panelId === 'shop') {
-        renderShop();
-    }
 }
+
+
 function gainExp(amount) {
     player.exp += amount;
     while (player.exp >= player.max_exp) {

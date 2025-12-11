@@ -20,6 +20,74 @@
         <div id="intro-job-list" class="grid-2"></div>
       </div>
     </div>
+    <!-- 新手教學彈窗 -->
+<div id="tutorial-overlay" style="display: none;">
+    <div class="tutorial-modal">
+        <div class="tutorial-header">
+            <h2>🎮 遊戲教學</h2>
+            <button class="tutorial-close" onclick="closeTutorial()">✕</button>
+        </div>
+        
+        <div class="tutorial-content">
+            <div class="tutorial-section">
+                <h3>🎯 遊戲目標</h3>
+                <p>在這個殘酷的城市中生存下去，並成為地下世界的主宰者。</p>
+            </div>
+            
+            <div class="tutorial-section">
+                <h3>📊 核心系統</h3>
+                <ul>
+                    <li><strong>生命 (HP)</strong>：被打到 0 就死亡，遊戲結束</li>
+                    <li><strong>體力 (Energy)</strong>：工作、訓練、戰鬥都需要消耗體力</li>
+                    <li><strong>飢餓 & 口渴</strong>：隨時間下降，降到 0 會開始倒計時死亡</li>
+                    <li><strong>時間</strong>：每個行動都會消耗時間，注意時間管理</li>
+                </ul>
+            </div>
+            
+            <div class="tutorial-section">
+                <h3>💼 賺錢方式</h3>
+                <ul>
+                    <li><strong>工作</strong>：穩定收入，但消耗體力和時間</li>
+                    <li><strong>犯罪</strong>：高風險高回報，失敗會被抓</li>
+                    <li><strong>戰鬥</strong>：擊敗敵人獲得獎勵和經驗</li>
+                    <li><strong>賭博</strong>：50% 機率翻倍或歸零</li>
+                </ul>
+            </div>
+            
+            <div class="tutorial-section">
+                <h3>⚡ 新手建議</h3>
+                <ol>
+                    <li>先去<strong>「藏身處」休息</strong>，回復體力和生命</li>
+                    <li>去<strong>「我的職業」工作</strong>幾次，賺取啟動資金</li>
+                    <li>在<strong>「便利商店」</strong>購買食物和醫療用品</li>
+                    <li>隨時注意<strong>飢餓和口渴</strong>，降到 20 以下就危險了</li>
+                    <li>去<strong>「地下拳館」訓練</strong>，提升屬性</li>
+                    <li>有一定實力後，嘗試<strong>「街頭火拚」</strong>賺取經驗</li>
+                </ol>
+            </div>
+            
+            <div class="tutorial-section">
+                <h3>⚠️ 重要提醒</h3>
+                <ul>
+                    <li>死亡後存檔會被刪除，請謹慎行事</li>
+                    <li>完成<strong>每日挑戰</strong>可獲得額外獎勵</li>
+                    <li>升級後屬性會自動提升</li>
+                    <li>購買更好的房子可以提升休息效率</li>
+                </ul>
+            </div>
+        </div>
+        
+        <div class="tutorial-footer">
+            <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+                <input type="checkbox" id="tutorial-dont-show" style="width: auto; cursor: pointer;">
+                <span style="font-size: 0.9rem;">不再顯示</span>
+            </label>
+            <button class="action-btn" onclick="closeTutorial()" style="padding: 12px 30px;">
+                開始遊戲
+            </button>
+        </div>
+    </div>
+</div>
 
     <div id="app-container" style="display: none">
       <div id="mobile-header">
@@ -92,6 +160,9 @@
           </button>
         </nav>
         <div class="sidebar-footer">
+          <button class="nav-btn" onclick="showTutorial()" style="margin-bottom: 10px;">
+        📖 查看教學
+          </button>
           <button onclick="resetGame()" class="danger-btn">⚠️ 重置存檔</button>
         </div>
       </aside>
