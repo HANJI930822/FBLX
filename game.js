@@ -5,7 +5,8 @@ let currentAnimInterval = null;
 let playerFrameIndex = 0;
 let playerAnimInterval = null;
 let enemyAnimInterval = null;
-
+let jobPage = 1;
+const JOB_PAGE_SIZE = 4;
 // 戰鬥狀態旗標
 let isFighting = false;
 
@@ -504,47 +505,134 @@ function renderIntroJobs() {
     if (!list) return;
     list.innerHTML = '';
     
-    for (const [id, job] of Object.entries(jobData)) {
+    // 1. 將物件轉為陣列以便切片
+    const allJobs = Object.entries(jobData);
+    const totalPages = Math.ceil(allJobs.length / JOB_PAGE_SIZE);
+    
+    // 防呆
+    if (jobPage > totalPages) jobPage = 1;
+    if (jobPage < 1) jobPage = 1;
+
+    // 2. 計算當前頁面的範圍
+    const startIndex = (jobPage - 1) * JOB_PAGE_SIZE;
+    const endIndex = startIndex + JOB_PAGE_SIZE;
+    const jobsToShow = allJobs.slice(startIndex, endIndex);
+
+    // 3. 渲染職業卡片
+    jobsToShow.forEach(([id, job]) => {
         const card = document.createElement('div');
         card.className = 'job-select-card';
+        
+        // 處理獎勵描述
+        let bonusDesc = job.startBonus ? job.startBonus.desc : "無";
+
         card.innerHTML = `
-            <h3>${job.name}</h3>
-            <p style="color:#aaa; margin-bottom:10px;">${job.desc}</p>
-            <p style="font-size:0.9rem;">日薪: <span style="color:#f1c40f">$${job.salary}</span></p>
-            <div class="job-bonus-list">🎁 ${job.startBonus.desc}</div>
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <h3 style="margin:0; border:none;">${job.name}</h3>
+                <span style="color:#f1c40f; font-weight:bold;">$${job.salary}/日</span>
+            </div>
+            <p style="color:#aaa; margin:10px 0; font-size:0.9rem; height:40px; overflow:hidden;">${job.desc}</p>
+            <div class="job-bonus-list" style="margin-top:5px;">🎁 ${bonusDesc}</div>
         `;
+        // 點擊卡片直接選擇
         card.onclick = () => chooseStartJob(id);
         list.appendChild(card);
+    });
+
+    // 4. 加入分頁按鈕 (動態產生，不需修改 HTML)
+    // 先移除舊的分頁控制項 (如果有的話)
+    const oldPagination = document.getElementById('intro-pagination');
+    if (oldPagination) oldPagination.remove();
+
+    if (totalPages > 1) {
+        const paginationDiv = document.createElement('div');
+        paginationDiv.id = 'intro-pagination';
+        paginationDiv.style.cssText = "display:flex; justify-content:center; align-items:center; gap:20px; width:100%; margin-top:20px; grid-column: 1 / -1;";
+        
+        paginationDiv.innerHTML = `
+            <button class="action-btn" onclick="changeJobPage(-1)" ${jobPage === 1 ? 'disabled style="background:#444; color:#666;"' : ''}>◀ 上一頁</button>
+            <span style="color:#888;">${jobPage} / ${totalPages}</span>
+            <button class="action-btn" onclick="changeJobPage(1)" ${jobPage === totalPages ? 'disabled style="background:#444; color:#666;"' : ''}>下一頁 ▶</button>
+        `;
+        
+        // 將分頁按鈕插入到列表之後
+        list.parentElement.appendChild(paginationDiv);
     }
 }
 
 function chooseStartJob(jobId) {
     const job = jobData[jobId];
-    player = { ...defaultPlayerState }; 
+    
+    // 1. 重置玩家狀態 (深拷貝以避免物件參照問題)
+    // 確保 inventory 是一個全新的空物件
+    player = JSON.parse(JSON.stringify(defaultPlayerState)); 
     player.job = jobId;
     
     if (job.startBonus) {
-        if (job.startBonus.money) player.money += job.startBonus.money;
-        if (job.startBonus.str) player.strength += job.startBonus.str;
-        if (job.startBonus.spd) player.speed += job.startBonus.spd;
-        if (job.startBonus.hp) {
-            player.max_hp += job.startBonus.hp;
-            player.hp = player.max_hp;
+        const bonus = job.startBonus;
+
+        // --- A. 特殊裝備處理 ---
+        if (bonus.weapon) {
+            player.inventory[bonus.weapon] = 1;
+            player.weapon = bonus.weapon;
         }
-        if (job.startBonus.weapon) {
-            player.inventory[job.startBonus.weapon] = 1;
-            player.weapon = job.startBonus.weapon;
+        if (bonus.armor) {
+            player.inventory[bonus.armor] = 1;
+            player.armor = bonus.armor;
         }
+        if (bonus.accessory) {
+            player.inventory[bonus.accessory] = 1;
+            player.accessory = bonus.accessory;
+        }
+
+        // --- B. 道具處理 (關鍵修正) ---
+        if (bonus.inventory) {
+            // 情況 1: 如果是物件格式 (例如密醫: { 'first_aid_kit': 1, 'morphine': 1 })
+            if (typeof bonus.inventory === 'object') {
+                for (const [itemId, count] of Object.entries(bonus.inventory)) {
+                    // 確保背包有這個欄位
+                    player.inventory[itemId] = (player.inventory[itemId] || 0) + count;
+                }
+            } 
+            // 情況 2: 如果是單一字串格式 (舊版相容)
+            else if (typeof bonus.inventory === 'string') {
+                player.inventory[bonus.inventory] = 1;
+            }
+        }
+
+        // --- C. 數值屬性處理 ---
+        // 自動將 bonus 中的數值加到 player 上 (排除非數值欄位)
+        const excludeKeys = ['desc', 'weapon', 'armor', 'accessory', 'inventory'];
+        
+        for (const [key, value] of Object.entries(bonus)) {
+            // 檢查 key 是否為不需處理的特殊欄位，且 value 必須是數字
+            if (!excludeKeys.includes(key) && typeof value === 'number') {
+                if (player.hasOwnProperty(key)) {
+                    player[key] += value;
+                }
+            }
+        }
+        
+        // --- D. 修正當前狀態 ---
+        // 避免上限提升了(例如 max_hp)，但當前數值(hp)還是舊的
+        player.hp = player.max_hp;
+        player.energy = player.max_energy;
+        player.hunger = player.max_hunger;
+        player.thirst = player.max_thirst;
     }
     
+    // 切換畫面
     document.getElementById('intro-screen').style.display = 'none';
     document.getElementById('app-container').style.display = 'flex';
     
     log(`新遊戲開始！你的身分是：${job.name}`, "success");
-    saveGame();
+    saveGame(); // 立即存檔
     startGameLoop();
 }
-
+function changeJobPage(direction) {
+    jobPage += direction;
+    renderIntroJobs();
+}
 function renderEnemies() {
   const list = document.getElementById("enemy-list");
   if (!list) return;
@@ -672,8 +760,14 @@ function renderInventory() {
     
     itemIds.forEach(id => {
         const qty = player.inventory[id];
+        const item = itemData[id];
+        if (!item) {
+            // 如果找不到物品資料，在 Console 顯示錯誤但不讓遊戲當掉
+            console.warn(`警告：背包內有未知物品 ID [${id}]，請檢查 data.js 的 itemData`);
+            return; // 跳過這個壞掉的物品，繼續畫下一個
+        }
         if (qty > 0) {
-            const item = itemData[id];
+           
             
             const isEquippedWeapon = (player.weapon === id);
             const isEquippedArmor = (player.armor === id);
@@ -805,11 +899,7 @@ function checkAchievements() {
 }
 
 function showToast(achName) {
-    const toast = document.getElementById('achievement-toast');
-    const msg = document.getElementById('toast-msg');
-    msg.innerText = achName;
-    toast.classList.add('show');
-    setTimeout(() => { toast.classList.remove('show'); }, 3000);
+    console.log(`[系統紀錄] 🏆 成就解鎖：${achName}`);
 }
 
 function renderAchievements() {

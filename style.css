@@ -99,20 +99,28 @@ body {
   flex: 1;
   display: flex;
   flex-direction: column;
-  padding: 20px 40px;
+  padding: 10px 20px;
   overflow-y: auto;
 }
 #status-bar {
   display: flex;
-  flex-direction: column; 
+  flex-direction: column;
   gap: 10px;
-  
+
   background: var(--bg-panel);
   padding: 15px 25px;
   border-radius: var(--radius);
-  margin-bottom: 20px;
+
+  /* ★ 關鍵修正：固定在頂部，確保 log 不會被捲走 */
+  position: sticky;
+  top: 0;
+  z-index: 100; /* 確保它在最上層 */
+  margin-bottom: 0px; /* 移除與 log-area 間的間距 */
+
   border: 1px solid var(--border-color);
-  flex-shrink: 0; 
+  border-left: none; /* 讓狀態欄看起來與主內容區邊緣對齊 */
+  border-right: none;
+  flex-shrink: 0;
 }
 .stat-label {
   font-size: 0.85rem;
@@ -147,18 +155,21 @@ body {
 
 /* 日誌區域 */
 #log-area {
-  height: 150px;
+  min-height: 150px; /* 最小 150px */
+  max-height: 300px; /* 最大 300px */
+  height: auto; /* 自動調整 */
   background: #000;
   border: 1px solid #333;
-  border-radius: var(--radius);
-  padding: 10px;
-  overflow-y: auto;
+  border-top: none;
+  border-radius: 0 0 var(--radius) var(--radius);
+  padding: 15px;
+  overflow-y: auto; /* 超過高度就顯示滾動條 */
   font-size: 0.9rem;
-  margin-bottom: 20px;
+  margin-bottom: 20px; /* 與下方面板的固定距離 */
   color: #ccc;
 }
 .log-entry {
-  margin-bottom: 4px;
+  margin-bottom: 5px;
   border-bottom: 1px solid #111;
   padding-bottom: 2px;
 }
@@ -315,269 +326,289 @@ body {
   border-color: var(--accent-blue);
 }
 .pagination-controls {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    gap: 15px;
-    margin-top: 20px;
-    padding-top: 10px;
-    border-top: 1px dashed #333;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 15px;
+  margin-top: 20px;
+  padding-top: 10px;
+  border-top: 1px dashed #333;
 }
 
 .page-btn {
-    background: #333;
-    color: white;
-    border: 1px solid #555;
-    padding: 5px 15px;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 0.9rem;
+  background: #333;
+  color: white;
+  border: 1px solid #555;
+  padding: 5px 15px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
 }
 
-.page-btn:hover { background: #555; }
-.page-btn:disabled { 
-    background: #222; 
-    color: #555; 
-    border-color: #333; 
-    cursor: not-allowed; 
+.page-btn:hover {
+  background: #555;
+}
+.page-btn:disabled {
+  background: #222;
+  color: #555;
+  border-color: #333;
+  cursor: not-allowed;
 }
 
 .page-info {
-    color: #888;
-    font-size: 0.9rem;
+  color: #888;
+  font-size: 0.9rem;
 }
 /* --- 開場畫面 --- */
 #intro-screen {
-    position: fixed;
-    top: 0; left: 0;
-    width: 100%; height: 100%;
-    background-color: #050505; /* 深黑色背景 */
-    z-index: 9999;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    padding: 20px;
-    overflow-y: auto; /* 防止手機版內容太長 */
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: #050505; /* 深黑色背景 */
+  z-index: 9999;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+  overflow-y: auto; /* 防止手機版內容太長 */
 }
 
 .intro-content {
-    max-width: 900px;
-    width: 100%;
-    text-align: center;
-    animation: fadeIn 1s;
+  max-width: 900px;
+  width: 100%;
+  text-align: center;
+  animation: fadeIn 1s;
 }
 
 .intro-content h1 {
-    font-size: 3rem;
-    color: white;
-    margin-bottom: 10px;
-    letter-spacing: 2px;
-    text-shadow: 0 0 10px rgba(52, 152, 219, 0.5); /* 藍色光暈 */
+  font-size: 3rem;
+  color: white;
+  margin-bottom: 10px;
+  letter-spacing: 2px;
+  text-shadow: 0 0 10px rgba(52, 152, 219, 0.5); /* 藍色光暈 */
 }
 
 /* 職業選擇卡片 */
 .job-select-card {
-    background: #1a1a1a;
-    border: 1px solid #333;
-    padding: 25px;
-    border-radius: 8px;
-    cursor: pointer;
-    transition: all 0.3s;
-    text-align: left;
-    position: relative;
-    overflow: hidden;
+  background: #1a1a1a;
+  border: 1px solid #333;
+  padding: 25px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s;
+  text-align: left;
+  position: relative;
+  overflow: hidden;
 }
 
 .job-select-card:hover {
-    border-color: #f1c40f; /* 金色邊框 */
-    transform: translateY(-5px);
-    background: #222;
-    box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+  border-color: #f1c40f; /* 金色邊框 */
+  transform: translateY(-5px);
+  background: #222;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.5);
 }
 
 .job-select-card h3 {
-    margin: 0 0 10px 0;
-    color: #fff;
-    font-size: 1.3rem;
-    border-bottom: 1px solid #444;
-    padding-bottom: 10px;
+  margin: 0 0 10px 0;
+  color: #fff;
+  font-size: 1.3rem;
+  border-bottom: 1px solid #444;
+  padding-bottom: 10px;
 }
 
 .job-bonus-list {
-    margin-top: 15px;
-    font-size: 0.9rem;
-    color: #2ecc71; /* 綠色文字 */
-    background: rgba(46, 204, 113, 0.1);
-    padding: 10px;
-    border-radius: 4px;
+  margin-top: 15px;
+  font-size: 0.9rem;
+  color: #2ecc71; /* 綠色文字 */
+  background: rgba(46, 204, 113, 0.1);
+  padding: 10px;
+  border-radius: 4px;
 }
 
 #achievement-toast {
-    /* 固定定位：永遠浮在視窗上 */
-    position: fixed;
-    
-    /* 位置設定：預設藏在螢幕正下方 (畫面外) */
-    left: 50%;
-    bottom: -100px; /* 藏起來 */
-    transform: translateX(-50%); /* 水平置中 */
-    
-    /* 卡片外觀 */
-    background: #252525; /* 深灰底色 */
-    color: #fff;
-    min-width: 300px;
-    padding: 15px 25px;
-    border-radius: 50px; /* 膠囊狀圓角 */
-    border: 2px solid #f39c12; /* 金色邊框 */
-    box-shadow: 0 10px 30px rgba(0,0,0,0.8); /* 強烈陰影，增加立體感 */
-    
-    /* 排版 */
-    display: flex;
-    align-items: center;
-    gap: 15px;
-    z-index: 10000; /* 最上層 */
-    
-    /* 動畫過渡 */
-    transition: bottom 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275); /* 彈跳效果 */
+  /* 固定定位：永遠浮在視窗上 */
+  position: fixed;
+
+  /* 位置設定：預設藏在螢幕正下方 (畫面外) */
+  left: 50%;
+  bottom: -100px; /* 藏起來 */
+  transform: translateX(-50%); /* 水平置中 */
+
+  /* 卡片外觀 */
+  background: #252525; /* 深灰底色 */
+  color: #fff;
+  min-width: 300px;
+  padding: 15px 25px;
+  border-radius: 50px; /* 膠囊狀圓角 */
+  border: 2px solid #f39c12; /* 金色邊框 */
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8); /* 強烈陰影，增加立體感 */
+
+  /* 排版 */
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  z-index: 10000; /* 最上層 */
+
+  /* 動畫過渡 */
+  transition: bottom 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275); /* 彈跳效果 */
 }
 #a#achievement-toast.show {
-    bottom: 30px; /* 停在距離底部 30px 的地方 */
+  bottom: 30px; /* 停在距離底部 30px 的地方 */
 }
 .toast-icon {
-    font-size: 2rem;
+  font-size: 2rem;
 }
 
 .toast-text h4 {
-    margin: 0;
-    color: #f39c12; /* 金色標題 */
-    font-size: 1rem;
-    font-weight: bold;
-    text-transform: uppercase;
-    letter-spacing: 1px;
+  margin: 0;
+  color: #f39c12; /* 金色標題 */
+  font-size: 1rem;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 1px;
 }
 
 .toast-text span {
-    font-size: 0.9rem;
-    color: #ddd;
+  font-size: 0.9rem;
+  color: #ddd;
 }
 /* 成就卡片 */
 .ach-card {
-    background: #1a1a1a;
-    border: 1px solid #333;
-    padding: 15px;
-    border-radius: 4px;
-    opacity: 0.5; /* 未解鎖半透明 */
-    transition: all 0.3s;
+  background: #1a1a1a;
+  border: 1px solid #333;
+  padding: 15px;
+  border-radius: 4px;
+  opacity: 0.5; /* 未解鎖半透明 */
+  transition: all 0.3s;
 }
 
 .ach-card.unlocked {
-    opacity: 1;
-    border-color: #f39c12;
-    background: #252010; /* 微黃背景 */
-    box-shadow: 0 0 10px rgba(243, 156, 18, 0.2);
+  opacity: 1;
+  border-color: #f39c12;
+  background: #252010; /* 微黃背景 */
+  box-shadow: 0 0 10px rgba(243, 156, 18, 0.2);
 }
 
 .ach-card h4 {
-    margin: 0 0 5px 0;
-    color: #f39c12;
-    display: flex;
-    justify-content: space-between;
+  margin: 0 0 5px 0;
+  color: #f39c12;
+  display: flex;
+  justify-content: space-between;
 }
 
 .ach-card p {
-    margin: 0;
-    font-size: 0.8rem;
-    color: #aaa;
+  margin: 0;
+  font-size: 0.8rem;
+  color: #aaa;
 }
 
 /* ★ 手機版響應式設計 (當螢幕寬度小於 768px 時生效) */
 #mobile-header {
-    display: none;
+  display: none;
 }
 
 /* ★ 手機版響應式設計 (漢堡選單版) */
 @media (max-width: 768px) {
+  /* 1. 顯示頂部導覽列 */
+  #mobile-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background-color: #1a1a1a;
+    padding: 10px 15px;
+    border-bottom: 1px solid #333;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 60px;
+    z-index: 2000;
+  }
 
-    /* 1. 顯示頂部導覽列 */
-    #mobile-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        background-color: #1a1a1a;
-        padding: 10px 15px;
-        border-bottom: 1px solid #333;
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 60px;
-        z-index: 2000;
-    }
+  #menu-toggle-btn {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 1.8rem;
+    cursor: pointer;
+  }
 
-    #menu-toggle-btn {
-        background: none;
-        border: none;
-        color: white;
-        font-size: 1.8rem;
-        cursor: pointer;
-    }
+  .mobile-title {
+    color: white;
+    font-weight: bold;
+    font-size: 1.2rem;
+  }
 
-    .mobile-title {
-        color: white;
-        font-weight: bold;
-        font-size: 1.2rem;
-    }
+  /* 2. 改造側邊欄 -> 變身為「滑出式抽屜」 */
+  #sidebar {
+    position: fixed;
+    top: 60px; /* 在 Header 之下 */
+    left: 0;
+    width: 250px; /* 選單寬度 */
+    height: calc(100% - 60px);
+    background-color: #111; /* 深色背景 */
+    border-right: 1px solid #333;
+    z-index: 1999;
 
-    /* 2. 改造側邊欄 -> 變身為「滑出式抽屜」 */
-    #sidebar {
-        position: fixed;
-        top: 60px; /* 在 Header 之下 */
-        left: 0;
-        width: 250px; /* 選單寬度 */
-        height: calc(100% - 60px);
-        background-color: #111; /* 深色背景 */
-        border-right: 1px solid #333;
-        z-index: 1999;
-        
-        /* 動畫設定：預設藏在左邊 */
-        transform: translateX(-100%);
-        transition: transform 0.3s ease-in-out;
-        
-        /* 讓選單內部可以滾動 */
-        overflow-y: auto;
-        padding-bottom: 20px;
-    }
+    /* 動畫設定：預設藏在左邊 */
+    transform: translateX(-100%);
+    transition: transform 0.3s ease-in-out;
 
-    /* 當加上 .active class 時，滑出來 */
-    #sidebar.active {
-        transform: translateX(0);
-        box-shadow: 5px 0 15px rgba(0,0,0,0.5); /* 加點陰影 */
-    }
+    /* 讓選單內部可以滾動 */
+    overflow-y: auto;
+    padding-bottom: 20px;
+  }
 
-    /* 3. 調整主內容區域 */
-    #main-content {
-        padding: 10px;
-        padding-top: 70px; /* ★ 關鍵：預留頂部 Header 的高度，不然內容會被擋住 */
-        width: 100%;
-        height: 100vh;
-    }
+  /* 當加上 .active class 時，滑出來 */
+  #sidebar.active {
+    transform: translateX(0);
+    box-shadow: 5px 0 15px rgba(0, 0, 0, 0.5); /* 加點陰影 */
+  }
 
-    /* 4. 調整狀態列 (Header) */
-    #status-bar {
-        padding: 10px;
-        gap: 5px;
-    }
-    .stat-row { flex-wrap: wrap; }
-    .stat-group { font-size: 0.85rem; }
+  /* 3. 調整主內容區域 */
+  #main-content {
+    padding: 10px;
+    padding-top: 70px; /* ★ 關鍵：預留頂部 Header 的高度，不然內容會被擋住 */
+    width: 100%;
+    height: 100vh;
+  }
 
-    /* 5. 調整雙欄佈局 -> 單欄 */
-    .grid-2 {
-        grid-template-columns: 1fr;
-        gap: 15px;
-    }
+  /* 4. 調整狀態列 (Header) */
+  #status-bar {
+    padding: 10px;
+    gap: 5px;
+  }
+  .stat-row {
+    flex-wrap: wrap;
+  }
+  .stat-group {
+    font-size: 0.85rem;
+  }
 
-    /* 6. 其他微調 */
-    .brand { display: none; } /* 選單裡不需要再顯示一次標題 */
-    #log-area { height: 100px; font-size: 0.8rem; }
-    .intro-content { width: 95%; max-height: 90vh; }
-    #achievement-toast { width: 90%; right: -100%; left: 5%; bottom: 20px; }
+  /* 5. 調整雙欄佈局 -> 單欄 */
+  .grid-2 {
+    grid-template-columns: 1fr;
+    gap: 15px;
+  }
+
+  /* 6. 其他微調 */
+  .brand {
+    display: none;
+  } /* 選單裡不需要再顯示一次標題 */
+  css #log-area {
+    top: 220px; /* ← 刪除這行，因為我們不用 sticky 了 */
+    height: 180px; /* ✓ 加上這行，手機版顯示小一點 */
+  }
+  .intro-content {
+    width: 95%;
+    max-height: 90vh;
+  }
+  #achievement-toast {
+    width: 90%;
+    right: -100%;
+    left: 5%;
+    bottom: 20px;
+  }
 }

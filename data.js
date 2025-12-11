@@ -46,34 +46,128 @@ const gameConfig = {
   dehydrationLimit: 72,
   // 每天結束時扣除的生存值
   dailyHungerDecay: 40, 
-  dailyThirstDecay: 60 
+  dailyThirstDecay: 40 
 };
 
 const jobData = {
+    // --- 生存系 ---
     'hobo': { 
         name: "流浪漢", salary: 20, 
-        desc: "一無所有的開局，生活艱難，但適應力強。",
-        startBonus: { money: 0, hp: 50, desc: "最大生命 +100 (命很硬)" }
+        desc: "命比蟑螂還硬。雖然身無分文，但生存能力極強。",
+        startBonus: { 
+            money: 0, 
+            max_hp: 100, // 血量翻倍
+            defense: 5,  // 皮糙肉厚
+            speed: -5,   // 長期營養不良，跑不快
+            desc: "最大生命+100, 防禦+5, 速度-5" 
+        }
     },
+    'survivor': { // 新增：野外求生專家
+        name: "拾荒者", salary: 40,
+        desc: "習慣在惡劣環境尋找物資，對飢餓忍耐度高。",
+        startBonus: {
+            max_hunger: 50, // 飢餓上限提升
+            max_thirst: 50, // 口渴上限提升
+            dexterity: 10,  // 翻找東西很靈活
+            money: 100,
+            desc: "飢餓/口渴上限+50, 靈巧+10, 存款$100"
+        }
+    },
+
+    // --- 平民系 ---
     'cleaner': { 
         name: "清潔工", salary: 60, 
-        desc: "平凡的市民，有一點微薄的積蓄。",
-        startBonus: { money: 500, desc: "獲得存款 $500" }
+        desc: "每天勞動讓他保持著還不錯的體能，積蓄普通。",
+        startBonus: { 
+            money: 800, 
+            strength: 5, 
+            speed: 5, 
+            max_energy: 20, // 體力較好
+            desc: "存款$800, 全屬性微幅提升, 體力上限+20" 
+        }
     },
+    'office_worker': { // 新增：社畜
+        name: "上班族", salary: 100,
+        desc: "長期坐辦公室，有錢但身體僵硬。",
+        startBonus: {
+            money: 2000,
+            strength: -5,
+            dexterity: -5,
+            max_energy: -20, // 容易累
+            desc: "存款$2000, 力量-5, 靈巧-5, 體力上限-20"
+        }
+    },
+
+    // --- 戰鬥系 ---
     'thug': { 
         name: "街頭混混", salary: 50, 
-        desc: "習慣用拳頭解決問題，力量較大。",
-        startBonus: { str: 10, desc: "獲得力量 +10" }
+        desc: "街頭鬥毆的常勝軍，下手不知輕重。",
+        startBonus: { 
+            strength: 25, 
+            defense: 5,
+            dexterity: -10, // 動作大開大闔，不靈活
+            weapon: 'wooden_bat',
+            desc: "力量+25, 防禦+5, 靈巧-10, 自帶球棒" 
+        }
     },
+    'bouncer': { 
+        name: "夜店保鑣", salary: 90, 
+        desc: "像一堵牆一樣擋在門口。極度耐打，但移動緩慢。",
+        startBonus: { 
+            max_hp: 150, 
+            defense: 15, 
+            strength: 10, 
+            speed: -15, // 非常慢
+            desc: "最大生命+150, 防禦+15, 速度-15" 
+        }
+    },
+    'hitman': { 
+        name: "職業殺手", salary: 60, 
+        desc: "追求一擊必殺的藝術，攻守極端。",
+        startBonus: { 
+            strength: 20, 
+            speed: 20, 
+            dexterity: 20,
+            max_hp: -30, // 身體素質其實一般，被打很痛
+            defense: -5,
+            weapon: 'switchblade',
+            desc: "攻/速/靈+20, 最大生命-30, 自帶彈簧刀" 
+        }
+    },
+
+    // --- 特殊系 ---
     'runner': { 
         name: "跑腿小弟", salary: 80, 
-        desc: "動作靈活，擅長逃跑與閃避。",
-        startBonus: { spd: 15, desc: "獲得速度 +15" }
+        desc: "逃跑是他的強項，沒人抓得住他。",
+        startBonus: { 
+            speed: 40, 
+            dexterity: 20, 
+            strength: -10, // 手無縛雞之力
+            accessory: 'sneakers', // 自帶鞋子
+            desc: "速度+40, 靈巧+20, 力量-10, 自帶運動鞋" 
+        }
     },
     'heir': { 
         name: "富二代", salary: 0, 
-        desc: "家裡很有錢，但被斷絕關係了，這是最後的零用錢。完全沒有戰鬥力。",
-        startBonus: { money: 2000, str: -10, desc: "獲得存款 $2000，但手無縛雞之力" }
+        desc: "含著金湯匙出生，但被斷絕了關係。身體素質極差。",
+        startBonus: { 
+            money: 5000, 
+            strength: -10, 
+            speed: -10, 
+            max_hp: -20, 
+            defense: -5,
+            desc: "存款$5000, 全屬性大幅降低 (弱雞)" 
+        }
+    },
+    'quack_doc': { 
+        name: "地下密醫", salary: 150, 
+        desc: "手很巧，隨身帶著藥品，但身體虛弱。",
+        startBonus: { 
+            dexterity: 30, // 手術快
+            strength: -5,
+            inventory: { 'first_aid_kit': 1, 'morphine': 1 }, // 攜帶多種物品
+            desc: "靈巧+30, 自帶急救箱與嗎啡" 
+        }
     }
 };
 const houseData = {
@@ -130,97 +224,170 @@ const eduData = {
     }
 };
 const itemData = {
-    // --- 武器 (category: weapon) ---
-    'wooden_bat': { 
-        name: "木製球棒", cost: 500, category: 'weapon', type: 'weapon', value: 10, 
-        desc: "攻+10。雖然有點舊，但打人很痛。" 
+    // --- 武器 (Weapon) ---
+    // 從破爛到神器的進化史
+    'brick': { 
+        name: "紅磚頭", cost: 50, category: 'weapon', type: 'weapon', value: 8, 
+        desc: "攻+8。隨手可得的溝通工具，丟出去還能撿回來。" 
     },
-    'switchblade': { 
-        name: "彈簧刀", cost: 2000, category: 'weapon', type: 'weapon', value: 35, 
-        desc: "攻+35。街頭鬥毆的神器，出刀速度快。" 
+    'wooden_bat': { 
+        name: "木製球棒", cost: 500, category: 'weapon', type: 'weapon', value: 15, 
+        desc: "攻+15。雖然有點舊，但用來講道理很有效。" 
+    },
+    'folding_chair': { 
+        name: "好折凳", cost: 1200, category: 'weapon', type: 'weapon', value: 30, 
+        desc: "攻+30。七大武器之首！隱藏殺氣於無形，坐著也能殺人。" 
+    },
+    'keyboard': { 
+        name: "機械式鍵盤", cost: 2500, category: 'weapon', type: 'weapon', value: 45, 
+        desc: "攻+45。鍵盤俠專用神器，兼具物理攻擊與精神傷害。" 
     },
     'crowbar': { 
-        name: "鐵撬", cost: 5000, category: 'weapon', type: 'weapon', value: 55, 
-        desc: "攻+55。物理學聖劍，破壞力驚人。" 
+        name: "物理學聖劍", cost: 6000, category: 'weapon', type: 'weapon', value: 65, 
+        desc: "攻+65。理論上可以撬開任何東西，包括敵人的腦袋。" 
     },
-    'glock': { 
-        name: "格洛克手槍", cost: 15000, category: 'weapon', type: 'weapon', value: 120, 
-        desc: "攻+120。以前是不會輕易拿出來的。" 
+    'nokia_3310': { 
+        name: "Nokia 3310", cost: 15000, category: 'weapon', type: 'weapon', value: 100, 
+        desc: "攻+100。上古文明遺留的神器，據說連核彈都炸不壞。" 
     },
     'ak47': { 
         name: "AK-47", cost: 80000, category: 'weapon', type: 'weapon', value: 350, 
-        desc: "攻+350。火力壓制，沒人敢靠近你。" 
+        desc: "攻+350。這才叫火力壓制。鄰居這下會安靜了。" 
     },
 
-    // --- 防具 (category: armor) ★ 新增分類 ---
-    'leather_jacket': { 
-        name: "皮夾克", cost: 1000, category: 'armor', type: 'armor', value: 10, 
-        desc: "防+10。多少能擋點刀傷，看起來也很酷。" 
+    // --- 防具 (Armor) ---
+    // 充滿生活智慧的防禦
+    'cardboard_box': { 
+        name: "紙箱", cost: 100, category: 'armor', type: 'armor', value: 2, 
+        desc: "防+2。雖然擋不住子彈，但躲在裡面很有安全感 (Snake? Snake!)。" 
+    },
+    'pot_lid': { 
+        name: "不鏽鋼鍋蓋", cost: 800, category: 'armor', type: 'armor', value: 15, 
+        desc: "防+15。低配版美國隊長盾牌，炒菜擋刀兩相宜。" 
+    },
+    'bubble_wrap': { 
+        name: "氣泡紙套裝", cost: 2000, category: 'armor', type: 'armor', value: 25, 
+        desc: "防+25。被打的時候會發出「波波波」的聲音，極度舒壓。" 
+    },
+    'motorcycle_helmet': { 
+        name: "全罩安全帽", cost: 5000, category: 'armor', type: 'armor', value: 40, 
+        desc: "防+40。防禦力不錯，重點是沒人認得出你是誰。" 
     },
     'bulletproof_vest': { 
-        name: "防彈背心", cost: 20000, category: 'armor', type: 'armor', value: 50, 
-        desc: "防+50。警用規格，保命要緊。" 
+        name: "防彈背心", cost: 20000, category: 'armor', type: 'armor', value: 60, 
+        desc: "防+60。雖然很重且不透氣，但總比身上多幾個洞好。" 
+    },
+    'iron_man_suit': { // Cosplay 用
+        name: "鋼鐵人皮套", cost: 50000, category: 'armor', type: 'armor', value: 90, 
+        desc: "防+90。其實只是高品質 Cosplay 道具，但嚇唬人很有效。" 
     },
 
-    // --- 醫療 (category: medical) ---
-    'bandage': { 
-        name: "繃帶", cost: 15, category: 'medical', type: 'hp', value: 30, 
-        desc: "回復 30 生命。止血用，最基本的醫療品。" 
+    // --- 飾品 (Accessory) ---
+    // 增加各種玄學屬性
+    'tinfoil_hat': {
+        name: "錫箔帽", cost: 50, category: 'accessory', type: 'accessory', value: 1,
+        desc: "靈+1。防止政府與外星人讀取你的腦波。智商看起來-50。"
     },
-    'first_aid_kit': { 
-        name: "急救箱", cost: 300, category: 'medical', type: 'hp', value: 100, 
-        desc: "回復 100 生命。內含各種緊急處理工具。" 
+    'gold_chain_fake': { 
+        name: "粗金項鍊(鍍金)", cost: 300, category: 'accessory', type: 'accessory', value: 5, 
+        desc: "靈+5。戴上去像個大哥。流汗時脖子會黑一圈。" 
     },
-    'morphine': { 
-        name: "嗎啡", cost: 2000, category: 'medical', type: 'hp', value: 500, 
-        desc: "回復 500 生命。戰場上救命用的強效藥。" 
+    'slippers': { 
+        name: "藍白拖", cost: 1000, category: 'accessory', type: 'accessory', value: 15, 
+        desc: "靈+15。台灣傳奇裝備，既能跑步又能打蟑螂。" 
     },
-
-    // --- 食品/能量 (category: food) ---
-    'bread': { 
-        name: "乾麵包", cost: 10, category: 'food', type: 'hunger', value: 20, 
-        desc: "雖然硬得像石頭，但還能果腹。" 
-    },
-    'hamburger': { 
-        name: "雙層漢堡", cost: 80, category: 'food', type: 'hunger', value: 50, 
-        desc: "熱量炸彈，美味又飽足 (飽食度+50)。" 
-    },
-    'steak': { 
-        name: "發霉夜市牛排", cost: 120, category: 'food', type: 'hunger', value: 70, 
-        desc: "牛排吃到飽 (飽食度全滿)。" 
-    },
-
-    // --- 飲料 (category: drink) - 原本 food 的飲料移過來 ---
-    'water': { 
-        name: "瓶裝水", cost: 5, category: 'drink', type: 'thirst', value: 30, 
-        desc: "單純的水 (口渴度+30)。" 
-    },
-    'coffee': { 
-        name: "黑咖啡", cost: 20, category: 'drink', type: 'thirst', value: 20, 
-        desc: "提神醒腦，但也利尿 (口渴度+20, 體力+5)。", extraEffect: { energy: 5 }
-    },
-    'energy_drink': { 
-        name: "蠻牛飲料", cost: 100, category: 'drink', type: 'energy', value: 15, 
-        desc: "專補體力，對口渴幫助不大 (口渴+5, 體力+15)。", extraEffect: { thirst: 5 }
-    },
-    // --- 醫療 (medical) ---
-    'bandage': { name: "繃帶", cost: 15, category: 'medical', type: 'hp', value: 30, desc: "回復 30 生命。" },
-    //飾品
     'sneakers': { 
-        name: "運動鞋", cost: 800, category: 'accessory', type: 'accessory', value: 10, 
-        desc: "輕便好穿。靈敏度 +10 (提升逃跑機率)。" 
-    },
-    'running_shoes': { 
-        name: "專業跑鞋", cost: 3000, category: 'accessory', type: 'accessory', value: 30, 
-        desc: "抓地力極佳。靈敏度 +30。" 
+        name: "運動鞋", cost: 3000, category: 'accessory', type: 'accessory', value: 25, 
+        desc: "靈+25。至少逃跑時腳不會痛。" 
     },
     'ninja_boots': { 
         name: "忍者足具", cost: 20000, category: 'accessory', type: 'accessory', value: 80, 
-        desc: "走路無聲。靈敏度 +80 (想去哪就去哪)。" 
+        desc: "靈+80。走路無聲，想去哪就去哪，偷情...我是說偷襲必備。" 
     },
-    'lucky_charm': {
-        name: "幸運符", cost: 5000, category: 'accessory', type: 'accessory', value: 5,
-        desc: "雖不能跑更快，但心理感覺良好。靈敏度 +5。"
+
+    // --- 醫療 (Medical) ---
+    'ok_band': { 
+        name: "卡通OK繃", cost: 20, category: 'medical', type: 'hp', value: 10, 
+        desc: "回血+10。上面印著佩佩豬，心靈層面的安慰大於實際療效。" 
+    },
+    'bandage': { 
+        name: "繃帶", cost: 50, category: 'medical', type: 'hp', value: 30, 
+        desc: "回血+30。止血基本款。" 
+    },
+    'grandma_ointment': { 
+        name: "阿嬤的藥膏", cost: 500, category: 'medical', type: 'hp', value: 100, 
+        desc: "回血+100。綠色罐裝，據說從蚊蟲叮咬到刀槍傷都能治的萬能神藥。" 
+    },
+    'first_aid_kit': { 
+        name: "急救箱", cost: 1500, category: 'medical', type: 'hp', value: 300, 
+        desc: "回血+300。專業人士的工具。" 
+    },
+    'morphine': { 
+        name: "嗎啡", cost: 5000, category: 'medical', type: 'hp', value: 600, 
+        desc: "回血+600。打下去就感覺不到痛了，不管是肉體還是心靈。" 
+    },
+
+    // --- 食物 (Food) ---
+    // 有風險的食物
+    'expired_bread': { 
+        name: "過期麵包", cost: 5, category: 'food', type: 'hunger', value: 15, 
+        desc: "飽食+15, HP-2。有點發霉，把綠色的部分剝掉應該還能吃...吧？",
+        extraEffect: { hp: -2 } 
+    },
+    'instant_noodles': { 
+        name: "科學麵", cost: 15, category: 'food', type: 'hunger', value: 20, 
+        desc: "飽食+20。捏碎乾吃才是真理，不要泡水！" 
+    },
+    'bento_discount': { 
+        name: "乞丐超人便當", cost: 40, category: 'food', type: 'hunger', value: 60, 
+        desc: "飽食+60, HP-5。貼了「六五折」貼紙的微波便當，吃了肚子會痛。",
+        extraEffect: { hp: -5 }
+    },
+    'stinky_tofu': { 
+        name: "深坑臭豆腐", cost: 80, category: 'food', type: 'hunger', value: 50, 
+        desc: "飽食+50。吃完方圓十里沒人敢靠近你。",
+        extraEffect: { hp: 5 } // 吃好料補點血
+    },
+    'steak': { 
+        name: "高級牛排", cost: 500, category: 'food', type: 'hunger', value: 100, 
+        desc: "飽食+100, 心靈滿足。五星級享受，吃完覺得人生充滿希望。" 
+    },
+
+    // --- 飲料 (Drink) ---
+    'tap_water': { 
+        name: "公園水龍頭", cost: 0, category: 'drink', type: 'thirst', value: 10, 
+        desc: "口渴+10, HP-1。免費，但有點鐵鏽味，喝多了可能會生病。",
+        extraEffect: { hp: -1 } // 模擬不乾淨的水
+    },
+    'water': { 
+        name: "瓶裝水", cost: 10, category: 'drink', type: 'thirst', value: 30, 
+        desc: "口渴+30。就是水。平凡無奇。" 
+    },
+    'bubble_tea': { 
+        name: "全糖珍奶", cost: 60, category: 'drink', type: 'thirst', value: 40, 
+        desc: "口渴+40, 體力+10。台灣人的生命之水，喝了血糖飆升，戰鬥力爆表。",
+        extraEffect: { energy: 10 }
+    },
+    'energy_drink': { 
+        name: "保力達B", cost: 80, category: 'drink', type: 'energy', value: 30, 
+        desc: "體力+30, 口渴+10。明天的氣力，今天給你傳便便。",
+        extraEffect: { thirst: 10 }
+    },
+    'beer': { 
+        name: "台啤", cost: 40, category: 'drink', type: 'thirst', value: 20, 
+        desc: "口渴+20, 體力-5。喝了會茫，但心情會變好。",
+        extraEffect: { energy: -5 }
+    },
+
+    // --- 雜項 (Misc) ---
+    // 這裡可以放一些特殊道具，雖然目前沒實裝功能，但買了看了開心
+    'lottery_ticket': { 
+        name: "大樂透彩券", cost: 50, category: 'misc', type: 'none', value: 0, 
+        desc: "一張廢紙。我是說，一個致富的夢想。" 
+    },
+    'magazine': {
+        name: "成人雜誌", cost: 200, category: 'misc', type: 'energy', value: 5,
+        desc: "體力+5。封面很精彩。看完精神百倍？"
     }
 };
 
