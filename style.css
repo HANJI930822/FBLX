@@ -1,18 +1,16 @@
 /* css/style.css */
 
 :root {
-  /* 配色方案 (Dark Theme) */
   --bg-dark: #121212;
   --bg-panel: #1e1e1e;
   --bg-sidebar: #181818;
   --text-main: #e0e0e0;
   --text-muted: #a0a0a0;
-
-  --accent-blue: #3498db; /* 體力顏色 */
-  --accent-hp: #e74c3c; /* hp顏色 */
-  --accent-green: #2ecc71; /* 金錢顏色 */
+  --accent-blue: #3498db;
+  --accent-hp: #e74c3c;
+  --accent-green: #2ecc71;
   --accent-hover: #444;
-
+  --accent-nerve: #9b59b6;
   --border-color: #333;
   --radius: 8px;
 }
@@ -22,7 +20,7 @@
 }
 
 body {
-  font-family: "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-family: "Courier New", Courier, monospace; /* 改用等寬字體，更有駭客感 */
   background-color: var(--bg-dark);
   color: var(--text-main);
   margin: 0;
@@ -30,14 +28,11 @@ body {
   display: flex;
 }
 
-/* --- 佈局 --- */
 #app-container {
   display: flex;
   width: 100%;
   height: 100%;
 }
-
-/* 左側選單 */
 #sidebar {
   width: 240px;
   background-color: var(--bg-sidebar);
@@ -46,7 +41,6 @@ body {
   flex-direction: column;
   padding: 20px;
 }
-
 .brand h2 {
   margin: 0;
   color: var(--text-main);
@@ -76,6 +70,7 @@ body {
   transition: all 0.2s;
   font-size: 1rem;
   margin-bottom: 5px;
+  font-family: inherit;
 }
 .nav-btn:hover {
   background-color: var(--accent-hover);
@@ -86,7 +81,6 @@ body {
   color: white;
   border-left: 3px solid var(--accent-blue);
 }
-
 .sidebar-footer {
   margin-top: auto;
 }
@@ -98,9 +92,9 @@ body {
   border: 1px solid #733;
   border-radius: var(--radius);
   cursor: pointer;
+  font-family: inherit;
 }
 
-/* 右側主內容 */
 #main-content {
   flex: 1;
   display: flex;
@@ -108,8 +102,6 @@ body {
   padding: 20px 40px;
   overflow-y: auto;
 }
-
-/* 狀態列 (Header) */
 #status-bar {
   display: grid;
   grid-template-columns: 1fr 2fr 2fr 2fr 1fr;
@@ -120,7 +112,6 @@ body {
   margin-bottom: 20px;
   border: 1px solid var(--border-color);
 }
-
 .stat-label {
   font-size: 0.85rem;
   color: var(--text-muted);
@@ -131,8 +122,6 @@ body {
   font-size: 1.2rem;
   font-weight: bold;
 }
-
-/* 進度條樣式 */
 .progress-track {
   width: 100%;
   height: 10px;
@@ -145,23 +134,31 @@ body {
   background: var(--accent-blue);
   transition: width 0.3s ease;
 }
-.nerve-fill { background: var(--accent-nerve); }
-.hp-fill { background: var(--accent-hp); height: 100%; transition: width 0.3s ease; }
-/* 訊息紀錄 (Log) */
+.nerve-fill {
+  background: var(--accent-nerve);
+}
+.hp-fill {
+  background: var(--accent-hp);
+  height: 100%;
+  transition: width 0.3s ease;
+}
+
+/* 日誌區域 */
 #log-area {
-  height: 120px;
+  height: 150px;
   background: #000;
   border: 1px solid #333;
   border-radius: var(--radius);
   padding: 10px;
   overflow-y: auto;
-  font-family: "Courier New", Courier, monospace;
   font-size: 0.9rem;
   margin-bottom: 20px;
   color: #ccc;
 }
 .log-entry {
   margin-bottom: 4px;
+  border-bottom: 1px solid #111;
+  padding-bottom: 2px;
 }
 .log-success {
   color: var(--accent-green);
@@ -169,41 +166,51 @@ body {
 .log-fail {
   color: var(--accent-red);
 }
+
+/* 戰鬥日誌 (特別加高，因為沒有畫面了) */
 .battle-log {
-    background: #000;
-    padding: 10px;
-    border: 1px solid #444;
-    border-radius: 4px;
-    height: 150px;
-    overflow-y: auto;
-    font-family: 'Courier New', monospace;
-    font-size: 0.85rem;
-    margin-bottom: 15px;
+  background: #000;
+  padding: 15px;
+  border: 1px solid #444;
+  border-radius: 4px;
+  height: 300px; /* 加高 */
+  overflow-y: auto;
+  font-size: 0.95rem;
+  margin-bottom: 15px;
+  line-height: 1.6; /* 增加行距好閱讀 */
 }
-.log-line { margin-bottom: 3px; border-bottom: 1px solid #222; padding-bottom: 2px;}
-.log-player { color: #3498db; } /* 玩家動作是藍色 */
-.log-enemy { color: #e74c3c; }  /* 敵人動作是紅色 */
-.log-win { color: #f1c40f; font-weight: bold; } /* 勝利是金色 */
-.log-die { color: #ff0000; font-weight: bold; background: #200; } /* 死亡 */
-/* 面板通用樣式 */
+.log-line {
+  margin-bottom: 5px;
+  border-bottom: 1px solid #222;
+  padding-bottom: 4px;
+}
+.log-player {
+  color: #3498db;
+}
+.log-enemy {
+  color: #e74c3c;
+}
+.log-win {
+  color: #f1c40f;
+  font-weight: bold;
+  padding: 10px 0;
+  border-top: 1px dashed #555;
+  border-bottom: 1px dashed #555;
+}
+.log-die {
+  color: #ff0000;
+  font-weight: bold;
+  background: #200;
+  padding: 10px;
+  text-align: center;
+}
+
 .panel {
   display: none;
-  animation: fadeIn 0.3s;
 }
 .panel.active {
   display: block;
 }
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(5px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
 .panel-header {
   font-size: 1.5rem;
   font-weight: bold;
@@ -216,7 +223,6 @@ body {
   margin-bottom: 20px;
 }
 
-/* 卡片與格線 */
 .grid-2 {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -231,15 +237,12 @@ body {
 .text-center {
   text-align: center;
 }
-
 .stat-big {
   font-size: 2rem;
   font-weight: bold;
   margin: 10px 0;
   color: white;
 }
-
-/* 按鈕 */
 .action-btn {
   background: var(--accent-blue);
   color: white;
@@ -248,13 +251,12 @@ body {
   border-radius: 4px;
   cursor: pointer;
   font-weight: bold;
-  transition: transform 0.1s;
+  font-family: inherit;
 }
 .action-btn:active {
   transform: scale(0.98);
 }
 
-/* 犯罪卡片列表 */
 .crime-list {
   display: flex;
   flex-direction: column;
@@ -286,83 +288,27 @@ body {
 .crime-info small {
   color: var(--text-muted);
 }
-/* --- 像素舞台樣式 --- */
-.pixel-stage {
-    width: 100%;
-    height: 200px;
-    background: #000;
-    margin-bottom: 20px;
-    border: 2px solid #444;
-    border-radius: 8px;
-    overflow: hidden;
-    position: relative; /* 為了讓特效絕對定位 */
-    display: flex;
-    align-items: center;
-    justify-content: center;
+.filter-btn {
+  background: #333;
+  color: #aaa;
+  border: 1px solid #444;
+  padding: 8px 12px;
+  border-radius: 20px; /* 圓角 */
+  cursor: pointer;
+  font-size: 0.9rem;
+  white-space: nowrap; /* 不換行 */
+  transition: all 0.2s;
+  font-family: inherit;
 }
 
-.pixel-stage img {
-    height: 100%;
-    width: auto;
-    object-fit: contain;
-    /* 關鍵：讓像素圖保持銳利，不要變模糊 */
-    image-rendering: pixelated; 
-    transition: filter 0.2s;
+.filter-btn:hover {
+  background: #444;
+  color: white;
 }
 
-/* --- 動畫特效 (Animations) --- */
-
-/* 1. 受傷震動 (Shake) */
-@keyframes shake {
-    0% { transform: translate(1px, 1px) rotate(0deg); }
-    10% { transform: translate(-1px, -2px) rotate(-1deg); }
-    20% { transform: translate(-3px, 0px) rotate(1deg); }
-    30% { transform: translate(3px, 2px) rotate(0deg); }
-    40% { transform: translate(1px, -1px) rotate(1deg); }
-    50% { transform: translate(-1px, 2px) rotate(-1deg); }
-    60% { transform: translate(-3px, 1px) rotate(0deg); }
-    70% { transform: translate(3px, 1px) rotate(-1deg); }
-    80% { transform: translate(-1px, -1px) rotate(1deg); }
-    90% { transform: translate(1px, 2px) rotate(0deg); }
-    100% { transform: translate(1px, -2px) rotate(-1deg); }
+/* 選中狀態 */
+.filter-btn.active {
+  background: var(--accent-blue);
+  color: white;
+  border-color: var(--accent-blue);
 }
-
-.anim-shake {
-    animation: shake 0.5s;
-    filter: sepia(100%) hue-rotate(-50deg) saturate(600%) contrast(0.8); /* 變紅 */
-}
-
-/* 2. 攻擊突刺 (Attack) */
-@keyframes lunge {
-    0% { transform: scale(1); }
-    50% { transform: scale(1.2); } /* 瞬間放大 */
-    100% { transform: scale(1); }
-}
-.anim-attack {
-    animation: lunge 0.1s;
-}
-
-/* 3. 敵人死亡 (Fade Out) */
-.anim-die {
-    filter: grayscale(100%) brightness(0.2);
-    transition: all 1s ease;
-}
-/* css/style.css 的最後面加入 */
-
-/* 4. 玩家受傷 (螢幕邊框閃紅光) */
-@keyframes redFlash {
-    0% { box-shadow: inset 0 0 0 0 rgba(255, 0, 0, 0); border-color: #444; }
-    50% { box-shadow: inset 0 0 50px 20px rgba(231, 76, 60, 0.5); border-color: #e74c3c; }
-    100% { box-shadow: inset 0 0 0 0 rgba(255, 0, 0, 0); border-color: #444; }
-}
-
-.anim-damage {
-    animation: redFlash 0.3s linear;
-}
-
-/* 微調：確保圖片在舞台中保持適當大小 */
-.pixel-stage img {
-    max-height: 90%; /* 留一點邊距 */
-    max-width: 90%;
-}
-
