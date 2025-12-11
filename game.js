@@ -131,40 +131,52 @@ function getPlayerDexterity() {
 }
 function attemptEscape() {
     // 1. 取得當前敵人 (我們需要知道現在在打誰)
-    // 由於之前的代碼沒有存 currentEnemy，我們去 DOM 抓名字反查，或是更簡單：
-    // 在 startCombat 時把 enemyId 存到全域變數
     if (!window.currentEnemyId) {
         // 防呆：如果找不到敵人，直接離開
         endCombat();
         return;
     }
     
-    const enemy = enemyData[window.currentEnemyId];
+    const enemy = typeof getEnemyCurrentState === 'function' 
+                  ? getEnemyCurrentState(window.currentEnemyId) 
+                  : enemyData[window.currentEnemyId];
     const playerDex = getPlayerDexterity();
     const enemyDex = enemy.dex || 10; // 預設 10
 
     // 2. 計算成功率
-    // 公式：玩家靈敏 / (玩家靈敏 + 敵人靈敏)
-    // 例：玩家 20, 敵人 20 -> 50%
-    // 例：玩家 10, 敵人 90 -> 10%
-    // 例：玩家 90, 敵人 10 -> 90%
     let escapeChance = playerDex / (playerDex + enemyDex);
     
     // 加上一點基礎運氣，並設定上下限 (至少 10% 機會，最多 90% 機會)
     escapeChance = Math.min(0.9, Math.max(0.1, escapeChance));
-
-    log(`嘗試逃跑... (成功率: ${Math.floor(escapeChance * 100)}%)`, "normal");
+      const escapeTimeCost = 0.5
+    log(`嘗試逃跑...`, "normal");
 
     // 3. 判定
     if (Math.random() < escapeChance) {
         log("💨 你成功甩掉了敵人！", "success");
+        passTime(escapeTimeCost);
         endCombat(); // 成功：呼叫原本的結束函數
     } else {
         log("🚫 逃跑失敗！被敵人攔住了！", "fail");
         // 失敗：不呼叫 endCombat，戰鬥繼續
         // 為了懲罰，可以扣一點時間
-        passTime(1); 
+        passTime(escapeTimeCost*2);
+        const damage = Math.max(1, Math.floor(enemy.str * 0.5));
+        player.hp = Math.max(0, player.hp - damage);
+        updateUI();
     }
+    const battleLog = document.getElementById('battle-log');
+        if(battleLog) {
+             const div = document.createElement('div');
+             div.className = 'log-line log-enemy';
+             div.innerText = `逃跑失敗，受到 ${damage} 點傷害！`;
+             battleLog.appendChild(div);
+             battleLog.scrollTop = battleLog.scrollHeight;
+        }
+    if (player.hp <= 0) {
+            log("你在逃跑失敗後被擊倒了...", "fail");
+            gameOver('dead');
+        }
 }
 function forceReset() {
     localStorage.removeItem('myTornGame');
@@ -220,16 +232,17 @@ function gameOver(reason) {
 function getEnemyCurrentState(id) {
     const base = enemyData[id];
     if (!base) return null;
-    
-    const lvl = player.enemyLevels[id] || 1;  // 預設等級 1
-    
+    let lvl = 1;
+    if (player && player.enemyLevels && player.enemyLevels[id]) {
+        lvl = player.enemyLevels[id];
+    }
     // 自己調整成你想要的成長公式
-    const hp    = Math.floor(base.hp   * (1 + 0.3 * (lvl - 1)));  // 每級 +30% HP
+    const hp    = Math.floor(base.hp   * (1 + 0.4 * (lvl - 1)));  // 每級 +30% HP
     const str   = Math.floor(base.str  * (1 + 0.25 * (lvl - 1))); // 每級 +25% 攻
     const spd   = Math.floor(base.spd  * (1 + 0.2 * (lvl - 1)));  // 每級 +20% 速
     const dex   = Math.floor(base.dex  * (1 + 0.2 * (lvl - 1)));  // 每級 +20% 靈巧
-    const reward = Math.floor(base.reward * (1 + 0.15 * (lvl - 1))); // 每級 +15% 獎金
-    const exp    = Math.floor(base.exp    * (1 + 0.15 * (lvl - 1))); // 每級 +15% EXP
+    const reward = Math.floor(base.reward * (1 + 0.35 * (lvl - 1))); // 每級 +15% 獎金
+    const exp    = Math.floor(base.exp    * (1 + 0.3 * (lvl - 1))); // 每級 +15% EXP
     
     return {
         ...base,
@@ -259,17 +272,20 @@ function startCombat(enemyId) {
     const enemy = getEnemyCurrentState(enemyId);
     document.getElementById('enemy-name').innerText = `${enemy.name} (Lv.${enemy.lvl})`;
     document.getElementById('battle-log').innerHTML = '';
+    const leaveBtn = document.getElementById('btn-leave-fight');
+    if (leaveBtn) leaveBtn.style.display = 'none';
     isFighting = true;
-    simulateFight(enemy, enemyId); 
+    simulateFight(enemy, enemyId);
 }
 function endCombat() {
     isFighting = false;
     document.getElementById('enemy-selection').style.display = 'block';
     document.getElementById('combat-screen').style.display = 'none';
-    log("你逃離了戰鬥。", "normal");
+    renderEnemies();
+    log("戰鬥結束。", "normal");
 }
 
-async function simulateFight(originalEnemy) {
+async function simulateFight(originalEnemy, enemyId) {
     let enemyHp = originalEnemy.hp;
     const battleLog = document.getElementById('battle-log');
     
@@ -356,10 +372,12 @@ async function simulateFight(originalEnemy) {
     addLog(`激戰 ${rounds} 回合，經過了 ${timeCost} 小時。`, "normal");
     
     if (enemyId) {
+        console.log('升級敵人:', enemyId);  // 除錯用
         if (!player.enemyLevels[enemyId]) player.enemyLevels[enemyId] = 1;
-        player.enemyLevels[enemyId] += 1;  // 每贏一次 +1 級
+        player.enemyLevels[enemyId] += 1;
+        console.log('新等級:', player.enemyLevels[enemyId]);  // 除錯用
     }
-    
+
     if (originalEnemy.loot && originalEnemy.loot.length > 0) {
         addLog(`--- 掉落物品 ---`, "normal");
         originalEnemy.loot.forEach(drop => {
@@ -388,13 +406,14 @@ async function simulateFight(originalEnemy) {
         }
 
         checkAchievements();
-
-        await wait(2000);
-        endCombat();
+        const leaveBtn = document.getElementById('btn-leave-fight');
+        if (leaveBtn) leaveBtn.style.display = 'block';
+        saveGame();
+        renderEnemies();
     } else {
         addLog(`=== 死亡 ===`, "log-die");
         addLog(`你被擊殺了...`, "log-die");
-        await wait(1000); 
+        await wait(2000); 
         gameOver();
     }
     
@@ -746,29 +765,37 @@ function changeJobPage(direction) {
     renderIntroJobs();
 }
 function renderEnemies() {
-  const list = document.getElementById("enemy-list");
-  if (!list) return;
-  list.innerHTML = "";
-
-
-  for (const [id, enemy] of Object.entries(enemyData)) {
-    const enemy = getEnemyCurrentState(id);
-    const card = document.createElement("div");
-    card.className = "card";
+    const list = document.getElementById('enemy-list');
+    if (!list) return;
     
-    card.innerHTML = `
+    list.innerHTML = '';
+
+    for (let i = 0; i < Object.keys(enemyData).length; i++) {
+        const id = Object.keys(enemyData)[i];
+        const enemy = getEnemyCurrentState(id);
+    let lvl = 1;
+        if (player && player.enemyLevels && player.enemyLevels[id]) {
+            lvl = player.enemyLevels[id];
+        }
+
+        const card = document.createElement('div');
+        card.className = 'card';
+        card.innerHTML = `
             <div style="display:flex; justify-content:space-between; align-items:center;">
-                <h4>${enemy.name} <small style="color:#666">(Lv.?)</small></h4>
-                <span style="color:var(--accent-red)">HP: ${enemy.hp}</span>
+                <h4>${enemy.name} <small style="color:#666;">Lv.${enemy.lvl}</small></h4>
+                <span style="color:var(--accent-red);">HP ${enemy.hp}</span>
             </div>
-            <p style="font-size:0.8rem; color:#aaa">${enemy.desc}</p>
+            <p style="font-size:0.8rem; color:#aaa;">${enemy.desc}</p>
             <div style="margin-top:10px; font-size:0.8rem;">
-                ⚔️ 攻: ${enemy.str} | 💨 速: ${enemy.spd}
+                攻擊: ${enemy.str} ｜ 速度: ${enemy.spd}
             </div>
-            <button class="action-btn" style="width:100%; margin-top:10px; background:#e74c3c;" onclick="startCombat('${id}')">攻擊</button>
+            <button class="action-btn" style="width:100%; margin-top:10px; background:#e74c3c;" 
+                    onclick="startCombat('${id}')">
+                開始戰鬥
+            </button>
         `;
-    list.appendChild(card);
-  }
+        list.appendChild(card);
+    }
 }
 
 function renderShop(category) {
@@ -1291,7 +1318,7 @@ function showPanel(panelId) {
         isFighting = false;
         document.getElementById('enemy-selection').style.display = 'block';
         document.getElementById('combat-screen').style.display = 'none';
-        log("你逃離了戰鬥。", "normal");
+        log("戰鬥結束。", "normal");
     }
     
     // 6. 切換到對應面板時渲染內容
