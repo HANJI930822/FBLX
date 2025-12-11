@@ -1,11 +1,12 @@
 const defaultPlayerState = {
   money: 0,
   hp: 100, max_hp: 100,
-  energy: 100, max_energy: 100,
+  energy: 100, max_energy: 100,dexterity: 10,
   strength: 10, speed: 10, defense: 0,
   level: 1, exp: 0, max_exp: 100,
   job: null, 
   weapon: null, 
+  accessory: null,
   armor: null,
   hunger: 100, max_hunger: 100,
   thirst: 100, max_thirst: 100,
@@ -178,7 +179,7 @@ const itemData = {
     // --- 食品/能量 (category: food) ---
     'bread': { 
         name: "乾麵包", cost: 10, category: 'food', type: 'hunger', value: 20, 
-        desc: "雖然硬得像石頭，但能填飽肚子 (飽食度+20)。" 
+        desc: "雖然硬得像石頭，但還能果腹。" 
     },
     'hamburger': { 
         name: "雙層漢堡", cost: 50, category: 'food', type: 'hunger', value: 50, 
@@ -204,6 +205,23 @@ const itemData = {
     },
     // --- 醫療 (medical) ---
     'bandage': { name: "繃帶", cost: 15, category: 'medical', type: 'hp', value: 30, desc: "回復 30 生命。" },
+    //飾品
+    'sneakers': { 
+        name: "運動鞋", cost: 800, category: 'accessory', type: 'accessory', value: 10, 
+        desc: "輕便好穿。靈敏度 +10 (提升逃跑機率)。" 
+    },
+    'running_shoes': { 
+        name: "專業跑鞋", cost: 3000, category: 'accessory', type: 'accessory', value: 30, 
+        desc: "抓地力極佳。靈敏度 +30。" 
+    },
+    'ninja_boots': { 
+        name: "忍者足具", cost: 20000, category: 'accessory', type: 'accessory', value: 80, 
+        desc: "走路無聲。靈敏度 +80 (想去哪就去哪)。" 
+    },
+    'lucky_charm': {
+        name: "幸運符", cost: 5000, category: 'accessory', type: 'accessory', value: 5,
+        desc: "雖不能跑更快，但心理感覺良好。靈敏度 +5。"
+    }
 };
 
 const crimeData = {
@@ -214,24 +232,20 @@ const crimeData = {
 
 const enemyData = {
     'hobo': { 
-        name: "流浪漢", hp: 30, str: 5, spd: 2, reward: 10, exp: 5, 
-        time: 1, // ★ 新增：打他只需 1 小時
-        desc: "看起來很好欺負。" 
+        name: "流浪漢", hp: 30, str: 5, spd: 2, dex: 5, // 靈敏低，容易逃
+        reward: 10, exp: 5, time: 1, desc: "看起來很好欺負。" 
     },
     'punk': { 
-        name: "街頭混混", hp: 80, str: 15, spd: 10, reward: 60, exp: 20, 
-        time: 2, // ★ 稍微花點時間
-        desc: "拿著小刀揮舞。" 
+        name: "街頭混混", hp: 80, str: 15, spd: 10, dex: 20, 
+        reward: 60, exp: 20, time: 2, desc: "拿著小刀揮舞。" 
     },
     'thug': { 
-        name: "幫派打手", hp: 200, str: 40, spd: 25, reward: 200, exp: 80, 
-        time: 3, // ★ 一場苦戰
-        desc: "受過專業的格鬥訓練。" 
+        name: "幫派打手", hp: 200, str: 40, spd: 25, dex: 50, // 靈敏高，難逃
+        reward: 200, exp: 80, time: 3, desc: "受過格鬥訓練。" 
     },
     'boss': { 
-        name: "區域角頭", hp: 1000, str: 150, spd: 100, reward: 5000, exp: 500, 
-        time: 6, // ★ 打完天都黑了
-        desc: "這片街區的老大。" 
+        name: "區域角頭", hp: 1000, str: 150, spd: 100, dex: 150, // 極高，幾乎無法逃
+        reward: 5000, exp: 500, time: 6, desc: "這片街區的老大。" 
     }
 };
 const achievementList = [

@@ -411,26 +411,23 @@ body {
     padding: 10px;
     border-radius: 4px;
 }
+
+
 #achievement-toast {
-    position: fixed;
-    bottom: 20px;
-    right: -300px; /* 預設藏在右邊 */
-    background: #222;
-    border: 2px solid #f39c12;
-    border-radius: 8px;
-    padding: 15px;
-    display: flex;
-    align-items: center;
-    width: 250px;
-    box-shadow: 0 5px 15px rgba(0,0,0,0.5);
-    transition: right 0.5s cubic-bezier(0.68, -0.55, 0.27, 1.55); /* 彈跳動畫 */
-    z-index: 10000;
-}
+        width: 90%;
+        left: 5%;           /* 水平置中 (5% + 90%寬度) */
+        right: auto;        /* 清除電腦版的 right 設定 */
+        
+        bottom: -150px;     /* ★ 關鍵修正：預設藏在螢幕最下方 (看不到的地方) */
+        
+        transition: bottom 0.5s cubic-bezier(0.68, -0.55, 0.27, 1.55); /* 改用 bottom 做動畫 */
+        z-index: 9999;
+    }
 
-#achievement-toast.show {
-    right: 20px; /* 滑出來 */
-}
-
+    #achievement-toast.show {
+        right: auto;        /* 保持清除 */
+        bottom: 80px;       /* ★ 關鍵修正：滑上來顯示 (80px 是為了避開底部導覽列) */
+    }
 .toast-icon {
     font-size: 2rem;
     margin-right: 15px;

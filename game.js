@@ -39,7 +39,13 @@ function initGame() {
             if(player.thirst === undefined) player.thirst = 100;
             if(player.max_thirst === undefined) player.max_thirst = 100;
             if(player.day === undefined) player.day = 1;
+            if(player.dexterity === undefined) player.dexterity = 10; // ★ 新增
+            if(player.accessory === undefined) player.accessory = null; // ★ 新增
+            if(player.inventory === undefined) player.inventory = {};
             if(player.time === undefined) player.time = 8;
+
+            player.time = Math.floor(player.time);
+
             if (!player.stats) {
                    player.stats = { fights_won:0, crimes_success:0, times_worked:0, items_bought:0, money_earned:0, food_eaten:0, days_lived:0 };
              }
@@ -63,7 +69,51 @@ function initGame() {
         renderIntroJobs();
     }
 }
+//靈敏度
+function getPlayerDexterity() {
+    let bonus = 0;
+    if (player.accessory && itemData[player.accessory]) {
+        bonus = itemData[player.accessory].value;
+    }
+    return player.dexterity + bonus;
+}
+function attemptEscape() {
+    // 1. 取得當前敵人 (我們需要知道現在在打誰)
+    // 由於之前的代碼沒有存 currentEnemy，我們去 DOM 抓名字反查，或是更簡單：
+    // 在 startCombat 時把 enemyId 存到全域變數
+    if (!window.currentEnemyId) {
+        // 防呆：如果找不到敵人，直接離開
+        endCombat();
+        return;
+    }
+    
+    const enemy = enemyData[window.currentEnemyId];
+    const playerDex = getPlayerDexterity();
+    const enemyDex = enemy.dex || 10; // 預設 10
 
+    // 2. 計算成功率
+    // 公式：玩家靈敏 / (玩家靈敏 + 敵人靈敏)
+    // 例：玩家 20, 敵人 20 -> 50%
+    // 例：玩家 10, 敵人 90 -> 10%
+    // 例：玩家 90, 敵人 10 -> 90%
+    let escapeChance = playerDex / (playerDex + enemyDex);
+    
+    // 加上一點基礎運氣，並設定上下限 (至少 10% 機會，最多 90% 機會)
+    escapeChance = Math.min(0.9, Math.max(0.1, escapeChance));
+
+    log(`嘗試逃跑... (成功率: ${Math.floor(escapeChance * 100)}%)`, "normal");
+
+    // 3. 判定
+    if (Math.random() < escapeChance) {
+        log("💨 你成功甩掉了敵人！", "success");
+        endCombat(); // 成功：呼叫原本的結束函數
+    } else {
+        log("🚫 逃跑失敗！被敵人攔住了！", "fail");
+        // 失敗：不呼叫 endCombat，戰鬥繼續
+        // 為了懲罰，可以扣一點時間
+        passTime(1); 
+    }
+}
 function forceReset() {
     localStorage.removeItem('myTornGame');
     player = { ...defaultPlayerState }; 
@@ -126,6 +176,9 @@ function startCombat(enemyId) {
     document.getElementById('enemy-selection').style.display = 'none';
     document.getElementById('combat-screen').style.display = 'block';
     
+    // ★ 記錄當前敵人 ID (給逃跑用)
+    window.currentEnemyId = enemyId;
+
     const enemy = enemyData[enemyId];
     document.getElementById('enemy-name').innerText = enemy.name;
     document.getElementById('battle-log').innerHTML = '';
@@ -133,7 +186,6 @@ function startCombat(enemyId) {
     isFighting = true;
     simulateFight(enemy);
 }
-
 function endCombat() {
     isFighting = false;
     document.getElementById('enemy-selection').style.display = 'block';
@@ -144,6 +196,9 @@ function endCombat() {
 async function simulateFight(originalEnemy) {
     let enemyHp = originalEnemy.hp;
     const battleLog = document.getElementById('battle-log');
+    
+    // ★ 新增：回合計數器
+    let rounds = 0; 
     
     const addLog = (msg, style) => {
         const div = document.createElement('div');
@@ -159,8 +214,11 @@ async function simulateFight(originalEnemy) {
 
     while (enemyHp > 0 && player.hp > 0 && isFighting) {
         
+        // ★ 新增：回合開始
+        rounds++; 
+
         await wait(600);
-        if (!isFighting) return;
+        if (!isFighting) break;
 
         // 玩家回合
         let totalAtk = getPlayerAttack();
@@ -171,15 +229,15 @@ async function simulateFight(originalEnemy) {
 
         if (dmg > 0) {
             enemyHp -= dmg;
-            addLog(`> 你造成 ${dmg} 點傷害！ (敵剩: ${Math.max(0, enemyHp)})`, "log-player");
+            addLog(`[R${rounds}] 你造成 ${dmg} 傷害 (敵剩: ${Math.max(0, enemyHp)})`, "log-player");
         } else {
-            addLog(`> 你的攻擊揮空了！`, "log-enemy");
+            addLog(`[R${rounds}] 你的攻擊揮空了！`, "log-enemy");
         }
 
         if (enemyHp <= 0) break;
         
         await wait(400);
-        if (!isFighting) return;
+        if (!isFighting) break;
 
         // 敵人回合
         let totalDef = getPlayerDefense();
@@ -188,10 +246,10 @@ async function simulateFight(originalEnemy) {
         let dodgeChance = 0.1 + (player.speed - originalEnemy.spd) * 0.01;
         
         if (Math.random() < dodgeChance) {
-            addLog(`> 你閃過了 ${originalEnemy.name} 的攻擊！`, "log-player");
+            addLog(`[R${rounds}] 你閃過了攻擊！`, "log-player");
         } else {
             player.hp = Math.max(0, player.hp - enemyDmg);
-            addLog(`> ${originalEnemy.name} 造成 ${enemyDmg} 點傷害。`, "log-enemy");
+            addLog(`[R${rounds}] 敵人造成 ${enemyDmg} 傷害。`, "log-enemy");
             updateUI(); 
         }
     }
@@ -200,7 +258,8 @@ async function simulateFight(originalEnemy) {
 
     await wait(500);
     
-    const timeCost = originalEnemy.time || 1;
+    // ★ 修改：時間計算 (1 回合 = 0.5 小時)
+    const timeCost = Math.ceil(rounds * 0.5);
     passTime(timeCost);
 
     if (player.hp > 0) {
@@ -210,7 +269,8 @@ async function simulateFight(originalEnemy) {
         
         addLog(`=== 勝利 ===`, "log-win");
         addLog(`獲得: $${originalEnemy.reward}, Exp +${expGain}`, "log-win");
-        addLog(`戰鬥耗時 ${timeCost} 小時。`, "normal");
+        // ★ 修改：顯示戰鬥時長
+        addLog(`激戰 ${rounds} 回合，經過了 ${timeCost} 小時。`, "normal");
         
         gainExp(expGain);
         updateUI();
@@ -602,8 +662,10 @@ function renderInventory() {
         const qty = player.inventory[id];
         if (qty > 0) {
             const item = itemData[id];
+            
             const isEquippedWeapon = (player.weapon === id);
             const isEquippedArmor = (player.armor === id);
+            const isEquippedAccessory = (player.accessory === id); // ★ 新增
             
             const card = document.createElement('div');
             card.className = 'card';
@@ -623,30 +685,18 @@ function renderInventory() {
             btn.style.width = '100%';
             btn.style.marginTop = '5px';
             
+            // 按鈕邏輯
             if (item.type === 'weapon') {
-                if (isEquippedWeapon) {
-                    btn.innerText = "已裝備";
-                    btn.style.background = "#e74c3c";
-                    btn.disabled = true;
-                } else {
-                    btn.innerText = "裝備武器";
-                    btn.style.background = "#2980b9";
-                    btn.onclick = () => equipItem(id);
-                }
+                if (isEquippedWeapon) { btn.innerText = "已裝備"; btn.style.background = "#e74c3c"; btn.disabled = true; } 
+                else { btn.innerText = "裝備武器"; btn.style.background = "#2980b9"; btn.onclick = () => equipItem(id); }
             } else if (item.type === 'armor') {
-                if (isEquippedArmor) {
-                    btn.innerText = "已裝備";
-                    btn.style.background = "#e74c3c";
-                    btn.disabled = true;
-                } else {
-                    btn.innerText = "裝備防具";
-                    btn.style.background = "#27ae60";
-                    btn.onclick = () => equipItem(id);
-                }
+                if (isEquippedArmor) { btn.innerText = "已裝備"; btn.style.background = "#e74c3c"; btn.disabled = true; } 
+                else { btn.innerText = "裝備防具"; btn.style.background = "#27ae60"; btn.onclick = () => equipItem(id); }
+            } else if (item.type === 'accessory') { // ★ 新增飾品邏輯
+                if (isEquippedAccessory) { btn.innerText = "已裝備"; btn.style.background = "#e74c3c"; btn.disabled = true; } 
+                else { btn.innerText = "裝備飾品"; btn.style.background = "#9b59b6"; btn.onclick = () => equipItem(id); }
             } else {
-                btn.innerText = "使用";
-                btn.style.background = "#444";
-                btn.onclick = () => useItem(id);
+                btn.innerText = "使用"; btn.style.background = "#444"; btn.onclick = () => useItem(id);
             }
 
             card.appendChild(header);
@@ -661,13 +711,17 @@ function equipItem(itemId) {
     const item = itemData[itemId];
     if (item.type === 'weapon') { player.weapon = itemId; log(`裝備了武器：${item.name}`, "success"); } 
     else if (item.type === 'armor') { player.armor = itemId; log(`穿上了防具：${item.name}`, "success"); }
+    else if (item.type === 'accessory') { player.accessory = itemId; log(`佩戴了飾品：${item.name}`, "success"); } // ★ 新增
     updateUI();
 }
 
 function useItem(itemId) {
+    // ★ 防呆：不能吃飾品
     const item = itemData[itemId];
-    if (item.type === 'weapon' || item.type === 'armor') return; 
+    if (item.type === 'weapon' || item.type === 'armor' || item.type === 'accessory') return; 
     
+    // ... (剩下的使用邏輯保持不變) ...
+    // (請直接使用原本的內容)
     if (!player.inventory[itemId] || player.inventory[itemId] <= 0) return;
     
     let msg = "";
@@ -716,9 +770,8 @@ function getPlayerDefense() {
     if (player.armor && itemData[player.armor]) {
         armorDef = itemData[player.armor].value;
     }
-    return (player.strength * 0.5) + armorDef; 
+    return Math.floor(player.strength * 0.5) + armorDef; 
 }
-
 function toggleMenu() {
     const sidebar = document.getElementById('sidebar');
     sidebar.classList.toggle('active');
@@ -963,7 +1016,22 @@ function showPanel(panelId) {
         log("你離開了戰鬥現場。", "normal");
     }
 }
-
+function gainExp(amount) {
+    player.exp += amount;
+    while (player.exp >= player.max_exp) {
+        player.level++;
+        player.exp -= player.max_exp;
+        player.max_exp = Math.floor(player.max_exp * 1.2); 
+        player.max_hp += 10;
+        player.hp = player.max_hp;
+        player.strength += 2;
+        player.speed += 2;
+        player.dexterity += 1; // ★ 新增：升級加靈敏度
+        
+        log(`🎉 升級了！現在等級 ${player.level}！(全屬性提升)`, "success");
+    }
+    updateUI(); 
+}
 function updateUI() {
     if(document.getElementById('money')) document.getElementById('money').innerText = player.money;
     if(document.getElementById('energy')) document.getElementById('energy').innerText = Math.floor(player.energy);
@@ -975,8 +1043,12 @@ function updateUI() {
     if (jobTitle) jobTitle.innerText = job ? `(${job.name})` : '(未知)';
 
     if(document.getElementById('total-atk')) document.getElementById('total-atk').innerText = getPlayerAttack();
-  
-   const timeStr = player.time.toString().padStart(2, '0') + ":00";
+  if(document.getElementById('total-def')) document.getElementById('total-def').innerText = getPlayerDefense();
+    if(document.getElementById('total-dex')) document.getElementById('total-dex').innerText = getPlayerDexterity();
+    const hours = Math.floor(player.time); 
+    const minutes = (player.time % 1) * 60; // 取小數部分 * 60
+    const timeStr = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+
     document.getElementById('day-display').innerText = player.day;
     document.getElementById('time-display').innerText = timeStr;
 
@@ -1001,11 +1073,13 @@ function updateUI() {
     }
     let weaponName = "無 (徒手)";
     if (player.weapon && itemData[player.weapon]) weaponName = itemData[player.weapon].name;
-    let armorName = "無 (便服)";
+    let armorName = "無 (裸體)";
     if (player.armor && itemData[player.armor]) armorName = itemData[player.armor].name;
-
+    let accName = "無 (空)";
+    if (player.accessory && itemData[player.accessory]) accName = itemData[player.accessory].name;
+    
     const wDisplay = document.getElementById('weapon-display');
-    if(wDisplay) wDisplay.innerText = `${weaponName} / ${armorName}`;
+    if(wDisplay) wDisplay.innerText = `${weaponName} / ${armorName} / ${accName}`;
 
     const expPercent = Math.min(100, (player.exp / player.max_exp) * 100);
     const expBar = document.getElementById('exp-bar');
