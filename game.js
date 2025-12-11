@@ -44,7 +44,15 @@ function initGame() {
             if(player.accessory === undefined) player.accessory = null; // ★ 新增
             if(player.inventory === undefined) player.inventory = {};
             if(player.time === undefined) player.time = 8;
-
+            if (!player.daily_challenges) player.daily_challenges = [];
+            if (!player.daily_progress) player.daily_progress = {};
+            if (!player.daily_completed) player.daily_completed = [];
+            if (!player.last_daily_reset) player.last_daily_reset = 1;
+            if (!player.main_quests_completed) player.main_quests_completed = [];
+            if (!player.ach_shop_purchased) player.ach_shop_purchased = [];
+            if (!player.perm_buffs) player.perm_buffs = {};
+    
+    initDailyChallenges();
             player.time = Math.floor(player.time);
 
             if (!player.stats) {
@@ -270,7 +278,11 @@ async function simulateFight(originalEnemy) {
     if (player.hp > 0) {
         player.stats.money_earned += originalEnemy.reward;
         player.stats.fights_won++;
-
+        if (player.daily_progress) {
+        player.daily_progress.fights_won++;
+        checkDailyChallenges();
+    }
+    checkMainQuests();
         let expGain = originalEnemy.exp || 10;
         
         addLog(`=== 勝利 ===`, "log-win");
@@ -314,7 +326,7 @@ function passTime(hours) {
     if (player.time >= 24) {
         player.time -= 24;
         player.day += 1;
-        
+        initDailyChallenges();
         const currentHouse = houseData[player.house] || houseData['shack'];
         const mult = currentHouse.decayMult || 1.0;
 
@@ -406,7 +418,11 @@ function work() {
     player.stats.times_worked++; 
     player.stats.money_earned += job.salary;
     checkAchievements(); 
-    
+    if (player.daily_progress) {
+        player.daily_progress.work_count++;
+        checkDailyChallenges();
+    }
+    checkMainQuests();
     log(`打卡上班... (經過 ${gameConfig.workTime} 小時)`, "normal");
     passTime(gameConfig.workTime);
     
@@ -417,7 +433,10 @@ function work() {
 
 function train(stat) {
     if (player.hp <= 0) { log("在醫院無法訓練！", "fail"); return; }
-    
+    if (player.daily_progress) {
+        player.daily_progress.train_count++;
+        checkDailyChallenges();
+    }
     if (player.energy >= gameConfig.trainCost) {
         player.energy -= gameConfig.trainCost;
         let gain = 1 + Math.floor(player[stat] * 0.01); 
@@ -435,7 +454,9 @@ function commitCrime(crimeId) {
 
     const crime = crimeData[crimeId];
     const timeCost = crime.time || 1;
-    
+     if (player.daily_progress) {
+        player.daily_progress.crimes_count++;
+    }
     if (player.energy >= crime.cost) { 
         player.energy -= crime.cost; 
         
@@ -734,6 +755,10 @@ function buyItem(itemId) {
     if (player.completed_courses.includes('business_course')) {
         finalCost = Math.floor(finalCost * 0.9);
     }
+    if (player.daily_progress) {
+        player.daily_progress.items_bought++;
+        checkDailyChallenges();
+    }
     if (player.money >= item.cost) {
         player.money -= item.cost;
         if (player.inventory[itemId]) { player.inventory[itemId]++; } else { player.inventory[itemId] = 1; }
@@ -849,6 +874,10 @@ function useItem(itemId) {
     }
     if (item.category === 'food' || item.category === 'drink') {
         player.stats.food_eaten++;
+    }
+     if (player.daily_progress) {
+        player.daily_progress.food_eaten++;
+        checkDailyChallenges();
     }
     if (item.extraEffect) {
         if(item.extraEffect.energy) player.energy = Math.min(player.max_energy, player.energy + item.extraEffect.energy);
@@ -1111,6 +1140,14 @@ function showPanel(panelId) {
     if (window.innerWidth <= 768) {
         sidebar.classList.remove('active');
     }
+// 5.切換到對應面板時渲染
+    if (panelId === 'panel-daily') {
+        renderDailyChallenges();
+        renderMainQuests();
+    }
+    if (panelId === 'panel-ach-shop') {
+        renderAchShop();
+    }
 // 5. 戰鬥狀態處理
     if (panelId !== 'fight' && isFighting) {
         isFighting = false;
@@ -1149,6 +1186,14 @@ function updateUI() {
     
     const job = jobData[player.job];
     const jobTitle = document.getElementById('job-title');
+    if (jobTitle) {
+        const job = jobData[player.job];
+        let text = job ? `(${job.name})` : '';
+        if (player.title) {
+            text = `${player.title} ${text}`;
+        }
+        jobTitle.innerText = text;
+    }
     if (jobTitle) jobTitle.innerText = job ? `(${job.name})` : '(未知)';
 
     if(document.getElementById('total-atk')) document.getElementById('total-atk').innerText = getPlayerAttack();
@@ -1218,6 +1263,295 @@ function updateUI() {
     if (document.getElementById('estate').classList.contains('active')) {
         renderEstate();
     }
+}
+// === 動態目標系統函數 ===
+
+// 初始化每日挑戰（遊戲開始時呼叫）
+function initDailyChallenges() {
+    // 檢查是否需要重置（新的一天）
+    if (player.day !== player.last_daily_reset) {
+        resetDailyChallenges();
+    }
+    
+    // 如果沒有挑戰，生成新的
+    if (!player.daily_challenges || player.daily_challenges.length === 0) {
+        generateDailyChallenges();
+    }
+}
+
+// 生成每日挑戰（隨機3個）
+function generateDailyChallenges() {
+    const shuffled = [...dailyChallengePool].sort(() => Math.random() - 0.5);
+    player.daily_challenges = shuffled.slice(0, 3).map(c => c.id);
+    player.daily_progress = {
+        train_count: 0,
+        work_count: 0,
+        fights_won: 0,
+        crimes_count: 0,
+        food_eaten: 0,
+        items_bought: 0
+    };
+    player.daily_completed = [];
+    player.last_daily_reset = player.day;
+    log("📋 新的每日挑戰已刷新！", "success");
+}
+
+// 重置每日挑戰
+function resetDailyChallenges() {
+    // 檢查未完成的挑戰
+    const unfinished = player.daily_challenges.filter(id => 
+        !player.daily_completed.includes(id)
+    );
+    
+    if (unfinished.length > 0) {
+        log(`⚠️ 昨日有 ${unfinished.length} 個挑戰未完成`, "fail");
+    }
+    
+    generateDailyChallenges();
+}
+
+// 檢查並完成每日挑戰
+function checkDailyChallenges() {
+    if (!player.daily_challenges) return;
+    
+    player.daily_challenges.forEach(challengeId => {
+        // 跳過已完成的
+        if (player.daily_completed.includes(challengeId)) return;
+        
+        const challenge = dailyChallengePool.find(c => c.id === challengeId);
+        if (!challenge) return;
+        
+        // 檢查是否達成
+        if (challenge.check(player)) {
+            player.daily_completed.push(challengeId);
+            
+            // 給予獎勵
+            if (challenge.reward.money) {
+                const bonus = applyMoneyBoost(challenge.reward.money);
+                player.money += bonus;
+                log(`💰 每日挑戰完成！獲得 $${bonus}`, "success");
+            }
+            if (challenge.reward.exp) {
+                const bonus = applyExpBoost(challenge.reward.exp);
+                gainExp(bonus);
+            }
+            
+            showToast(`每日挑戰完成：${challenge.name}`);
+            
+            // 檢查是否全部完成
+            if (player.daily_completed.length === player.daily_challenges.length) {
+                log("🎉 今日所有挑戰完成！額外獎勵 +$500", "success");
+                player.money += 500;
+            }
+        }
+    });
+}
+
+// 檢查主線任務
+function checkMainQuests() {
+    mainQuests.forEach(quest => {
+        // 跳過已完成的
+        if (player.main_quests_completed.includes(quest.id)) return;
+        
+        // 檢查是否達成
+        if (quest.check(player)) {
+            player.main_quests_completed.push(quest.id);
+            
+            // 給予獎勵
+            if (quest.reward.money) {
+                player.money += quest.reward.money;
+            }
+            if (quest.reward.exp) {
+                gainExp(quest.reward.exp);
+            }
+            if (quest.reward.item) {
+                player.inventory[quest.reward.item] = (player.inventory[quest.reward.item] || 0) + 1;
+                log(`🎁 獲得物品：${itemData[quest.reward.item].name}`, "success");
+            }
+            
+            log(`📜 主線任務完成：${quest.name}`, "success");
+            showToast(`任務完成：${quest.name}`);
+        }
+    });
+}
+
+// 計算成就點數
+function calculateAchievementPoints() {
+    let total = 0;
+    player.achievements.forEach(achId => {
+        total += achievementPointValues[achId] || 1; // 預設1分
+    });
+    return total;
+}
+
+// 購買成就商店物品
+function buyAchShopItem(itemId) {
+    const item = achievementShop[itemId];
+    if (!item) return;
+    
+    // 檢查是否已購買
+    if (player.ach_shop_purchased.includes(itemId)) {
+        log("已經購買過此物品！", "fail");
+        return;
+    }
+    
+    const points = calculateAchievementPoints();
+    
+    if (points < item.cost) {
+        log(`成就點數不足！需要 ${item.cost} 點`, "fail");
+        return;
+    }
+    
+    // 執行效果
+    if (item.type === 'perm_buff') {
+        item.effect(player);
+    } else if (item.type === 'item') {
+        player.inventory[item.itemId] = (player.inventory[item.itemId] || 0) + 1;
+    } else if (item.type === 'title') {
+        player.title = item.titleName;
+    }
+    
+    player.ach_shop_purchased.push(itemId);
+    log(`✨ 兌換成功：${item.name}`, "success");
+    renderAchShop();
+}
+
+// 應用金錢加成
+function applyMoneyBoost(amount) {
+    if (player.perm_buffs?.money_boost) {
+        return Math.floor(amount * player.perm_buffs.money_boost);
+    }
+    return amount;
+}
+
+// 應用經驗加成
+function applyExpBoost(amount) {
+    if (player.perm_buffs?.exp_boost) {
+        return Math.floor(amount * player.perm_buffs.exp_boost);
+    }
+    return amount;
+}
+// 渲染每日挑戰
+function renderDailyChallenges() {
+    const list = document.getElementById('daily-challenge-list');
+    if (!list) return;
+    
+    list.innerHTML = '';
+    
+    if (!player.daily_challenges || player.daily_challenges.length === 0) {
+        list.innerHTML = '<p style="color: #666;">今日挑戰尚未生成</p>';
+        return;
+    }
+    
+    player.daily_challenges.forEach(challengeId => {
+        const challenge = dailyChallengePool.find(c => c.id === challengeId);
+        if (!challenge) return;
+        
+        const isCompleted = player.daily_completed.includes(challengeId);
+        
+        const card = document.createElement('div');
+        card.className = 'card';
+        card.style.opacity = isCompleted ? '0.5' : '1';
+        card.style.borderLeft = isCompleted ? '4px solid #2ecc71' : '4px solid #3498db';
+        
+        card.innerHTML = `
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <h4 style="margin: 0;">${isCompleted ? '✅' : '⏳'} ${challenge.name}</h4>
+                    <p style="font-size: 0.85rem; color: #aaa; margin: 5px 0;">${challenge.desc}</p>
+                </div>
+                <div style="text-align: right; font-size: 0.85rem; color: #f39c12;">
+                    💰 $${challenge.reward.money || 0}<br>
+                    ⭐ ${challenge.reward.exp || 0} EXP
+                </div>
+            </div>
+        `;
+        
+        list.appendChild(card);
+    });
+}
+
+// 渲染主線任務
+function renderMainQuests() {
+    const list = document.getElementById('main-quest-list');
+    if (!list) return;
+    
+    list.innerHTML = '';
+    
+    // 只顯示未完成的任務（按階段排序）
+    const unfinished = mainQuests.filter(q => 
+        !player.main_quests_completed.includes(q.id)
+    ).sort((a, b) => a.stage - b.stage);
+    
+    if (unfinished.length === 0) {
+        list.innerHTML = '<p style="color: #2ecc71;">🎉 所有主線任務已完成！</p>';
+        return;
+    }
+    
+    unfinished.forEach(quest => {
+        const card = document.createElement('div');
+        card.className = 'card';
+        card.style.borderLeft = `4px solid ${quest.stage === 1 ? '#3498db' : quest.stage === 2 ? '#9b59b6' : '#e74c3c'}`;
+        
+        let rewardText = '';
+        if (quest.reward.money) rewardText += `💰 $${quest.reward.money} `;
+        if (quest.reward.exp) rewardText += `⭐ ${quest.reward.exp} EXP `;
+        if (quest.reward.item) rewardText += `🎁 ${itemData[quest.reward.item]?.name || '物品'}`;
+        
+        card.innerHTML = `
+            <div>
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <h4 style="margin: 0;">📜 ${quest.name}</h4>
+                    <span style="font-size: 0.8rem; color: #888;">階段 ${quest.stage}</span>
+                </div>
+                <p style="font-size: 0.85rem; color: #aaa; margin: 5px 0 10px 0;">${quest.desc}</p>
+                <div style="font-size: 0.85rem; color: #f39c12;">
+                    獎勵：${rewardText}
+                </div>
+            </div>
+        `;
+        
+        list.appendChild(card);
+    });
+}
+
+// 渲染成就商店
+function renderAchShop() {
+    const list = document.getElementById('ach-shop-list');
+    if (!list) return;
+    
+    const points = calculateAchievementPoints();
+    const display = document.getElementById('ach-points-display');
+    if (display) display.innerText = points;
+    
+    list.innerHTML = '';
+    
+    Object.entries(achievementShop).forEach(([id, item]) => {
+        const isPurchased = player.ach_shop_purchased.includes(id);
+        const canAfford = points >= item.cost;
+        
+        const card = document.createElement('div');
+        card.className = 'card';
+        card.style.opacity = isPurchased ? '0.5' : '1';
+        
+        card.innerHTML = `
+            <div>
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <h4 style="margin: 0;">${item.name}</h4>
+                    <span style="color: #f39c12; font-weight: bold;">${item.cost} 點</span>
+                </div>
+                <p style="font-size: 0.85rem; color: #aaa; margin: 10px 0;">${item.desc}</p>
+                <button class="action-btn" 
+                    style="width: 100%; background: ${isPurchased ? '#444' : (canAfford ? '#3498db' : '#555')};"
+                    onclick="buyAchShopItem('${id}')"
+                    ${isPurchased || !canAfford ? 'disabled' : ''}>
+                    ${isPurchased ? '✅ 已購買' : (canAfford ? '💎 兌換' : '🔒 點數不足')}
+                </button>
+            </div>
+        `;
+        
+        list.appendChild(card);
+    });
 }
 
 // 啟動遊戲

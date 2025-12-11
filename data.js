@@ -28,6 +28,27 @@ const defaultPlayerState = {
       food_eaten: 0,      // 吃食物次數
       days_lived: 0       // 存活天數 (跟 day 連動)
   },
+    // ★ 新增：動態目標系統
+    daily_challenges: [],        // 今日挑戰（3個ID）
+    daily_progress: {            // 今日進度追蹤
+        train_count: 0,
+        work_count: 0,
+        fights_won: 0,
+        crimes_count: 0,
+        food_eaten: 0,
+        items_bought: 0
+    },
+    daily_completed: [],         // 今日已完成的挑戰ID
+    last_daily_reset: 1,         // 上次重置每日挑戰的日期
+    
+    main_quests_completed: [],   // 已完成的主線任務ID
+    
+    achievement_points: 0,       // 成就點數
+    ach_shop_purchased: [],      // 已購買的成就商店物品
+    perm_buffs: {},              // 永久Buff
+    title: null,                 // 當前稱號
+    
+    stats: { /* ... */ },
   achievements: []
 };
 
@@ -45,8 +66,8 @@ const gameConfig = {
   starvationLimit: 168, 
   dehydrationLimit: 72,
   // 每天結束時扣除的生存值
-  dailyHungerDecay: 40, 
-  dailyThirstDecay: 40 
+  dailyHungerDecay: 0, 
+  dailyThirstDecay: 0 
 };
 
 const jobData = {
@@ -480,4 +501,203 @@ const achievementList = [
     { id: 'max_stats', name: '人類極限', desc: '飽食與口渴都維持 100', check: p => p.hunger >= 100 && p.thirst >= 100 },
     { id: 'endgame', name: '地下秩序', desc: '等級20 + 住別墅 + 持有AK47', check: p => p.level >= 20 && p.house === 'villa' && (p.weapon === 'ak47' || (p.inventory['ak47'] && p.inventory['ak47'] > 0)) }
 ];
+// === 動態目標系統 ===
+
+// 每日挑戰池（每天隨機抽3個）
+const dailyChallengePool = [
+    {
+        id: 'daily_train_3',
+        name: '健身狂人',
+        desc: '訓練任意屬性 3 次',
+        check: (p) => p.daily_progress?.train_count >= 3,
+        reward: { money: 200, exp: 50 }
+    },
+    {
+        id: 'daily_work_3',
+        name: '勤勞打工仔',
+        desc: '工作 3 次',
+        check: (p) => p.daily_progress?.work_count >= 3,
+        reward: { money: 300, exp: 30 }
+    },
+    {
+        id: 'daily_fight_5',
+        name: '街頭霸主',
+        desc: '贏得 5 場戰鬥',
+        check: (p) => p.daily_progress?.fights_won >= 5,
+        reward: { money: 500, exp: 100 }
+    },
+    {
+        id: 'daily_no_crime',
+        name: '良好公民',
+        desc: '整天不犯罪',
+        check: (p) => p.daily_progress?.crimes_count === 0,
+        reward: { money: 150, exp: 20 }
+    },
+    {
+        id: 'daily_eat_5',
+        name: '美食家',
+        desc: '吃 5 次食物/飲料',
+        check: (p) => p.daily_progress?.food_eaten >= 5,
+        reward: { money: 100, exp: 30 }
+    },
+    {
+        id: 'daily_buy_3',
+        name: '購物狂',
+        desc: '購買 3 件物品',
+        check: (p) => p.daily_progress?.items_bought >= 3,
+        reward: { money: 150, exp: 25 }
+    },
+    {
+        id: 'daily_survive',
+        name: '求生專家',
+        desc: '保持飢餓 & 口渴 > 50',
+        check: (p) => p.hunger >= 50 && p.thirst >= 50,
+        reward: { money: 100, exp: 20 }
+    },
+    {
+        id: 'daily_hp_full',
+        name: '滿血復活',
+        desc: '結束時 HP = 最大值',
+        check: (p) => p.hp >= p.max_hp,
+        reward: { money: 200, exp: 40 }
+    }
+];
+
+// 主線任務（階段性目標）
+const mainQuests = [
+    {
+        id: 'main_survive_3',
+        name: '新手存活',
+        desc: '存活到第 3 天',
+        check: (p) => p.day >= 3,
+        reward: { money: 500, exp: 100, item: 'bandage' },
+        stage: 1
+    },
+    {
+        id: 'main_level_5',
+        name: '初級戰士',
+        desc: '達到 Lv.5',
+        check: (p) => p.level >= 5,
+        reward: { money: 1000, exp: 200, item: 'wooden_bat' },
+        stage: 1
+    },
+    {
+        id: 'main_first_house',
+        name: '安居樂業',
+        desc: '搬離廢棄木屋',
+        check: (p) => p.house !== 'shack',
+        reward: { money: 2000, exp: 300 },
+        stage: 1
+    },
+    {
+        id: 'main_10k_money',
+        name: '小有積蓄',
+        desc: '累積 $10,000',
+        check: (p) => p.money >= 10000,
+        reward: { money: 0, exp: 500, item: 'first_aid_kit' },
+        stage: 2
+    },
+    {
+        id: 'main_level_15',
+        name: '進階戰士',
+        desc: '達到 Lv.15',
+        check: (p) => p.level >= 15,
+        reward: { money: 5000, exp: 1000 },
+        stage: 2
+    },
+    {
+        id: 'main_edu_1',
+        name: '好學不倦',
+        desc: '完成 1 門課程',
+        check: (p) => p.completed_courses.length >= 1,
+        reward: { money: 3000, exp: 500 },
+        stage: 2
+    },
+    {
+        id: 'main_fight_boss',
+        name: '挑戰強者',
+        desc: '擊敗 Boss「城市主宰者」',
+        check: (p) => p.achievements.includes('kill_boss'),
+        reward: { money: 10000, exp: 2000, item: 'ak47' },
+        stage: 3
+    },
+    {
+        id: 'main_villa',
+        name: '地產大亨',
+        desc: '搬進私人別墅',
+        check: (p) => p.house === 'villa',
+        reward: { money: 50000, exp: 5000 },
+        stage: 3
+    },
+    {
+        id: 'main_level_30',
+        name: '傳奇人物',
+        desc: '達到 Lv.30',
+        check: (p) => p.level >= 30,
+        reward: { money: 100000, exp: 10000 },
+        stage: 3
+    }
+];
+
+// 成就點數獎勵（基於現有成就系統）
+const achievementPointValues = {
+    // 根據成就難度給予不同點數
+    money1k: 1, money10k: 2, money100k: 3, money1m: 5, money10m: 10,
+    lv5: 1, lv10: 2, lv25: 3, lv50: 5,
+    fight1: 1, fight10: 2, fight50: 3, fight100: 5, kill_boss: 10,
+    survive7: 2, survive30: 3, survive100: 5,
+    house_apt: 2, house_pen: 3, house_vil: 5, house_isl: 10,
+    full_gear: 2, weapon_master: 5, endgame: 10
+    // ... 其他成就依照難度給 1-10 分
+};
+
+// 成就商店（用點數兌換）
+const achievementShop = {
+    'perm_exp_boost': {
+        name: '經驗加成 +10%',
+        desc: '永久增加經驗獲取 10%',
+        cost: 20,
+        type: 'perm_buff',
+        effect: (p) => { p.perm_buffs = p.perm_buffs || {}; p.perm_buffs.exp_boost = 1.1; }
+    },
+    'perm_money_boost': {
+        name: '收入加成 +10%',
+        desc: '永久增加金錢獲取 10%',
+        cost: 20,
+        type: 'perm_buff',
+        effect: (p) => { p.perm_buffs = p.perm_buffs || {}; p.perm_buffs.money_boost = 1.1; }
+    },
+    'perm_hp_boost': {
+        name: '生命上限 +50',
+        desc: '永久增加最大生命值 50',
+        cost: 30,
+        type: 'perm_buff',
+        effect: (p) => { p.max_hp += 50; p.hp = p.max_hp; }
+    },
+    'special_sword': {
+        name: '成就之劍',
+        desc: '特殊武器 (攻擊 +200)',
+        cost: 50,
+        type: 'item',
+        itemId: 'achievement_sword'
+    },
+    'title_legend': {
+        name: '稱號：傳奇',
+        desc: '在狀態欄顯示稱號',
+        cost: 100,
+        type: 'title',
+        titleName: '【傳奇】'
+    }
+};
+
+// 在 itemData 中新增成就之劍
+itemData['achievement_sword'] = {
+    name: '⚔️ 成就之劍',
+    cost: 0,
+    category: 'weapon',
+    type: 'weapon',
+    value: 200,
+    desc: '攻+200。只有真正的成就大師才能持有的神兵。'
+};
+
 let player = { ...defaultPlayerState };

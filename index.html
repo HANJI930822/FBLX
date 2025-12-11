@@ -54,6 +54,8 @@
           <button onclick="showPanel('gym')" class="nav-btn">
             🏋️ 地下拳館
           </button>
+          <button class="nav-btn" onclick="showPanel('panel-daily')">📋 每日挑戰</button>
+          <button class="nav-btn" onclick="showPanel('panel-ach-shop')">✨ 成就商店</button>
           <button
             onclick="showPanel('jobs')"
             class="nav-btn"
@@ -323,7 +325,28 @@
               <div id="edu-list" class="grid-2"></div>
             </div>
           </div>
-
+          <div id="panel-daily" class="panel">
+    <div class="panel-header">📋 每日挑戰</div>
+    <div class="panel-body">
+        <p class="desc">每天刷新，完成可獲得獎勵！</p>
+        <div id="daily-challenge-list"></div>
+        
+        <h3 style="margin-top: 30px;">📜 主線任務</h3>
+        <div id="main-quest-list"></div>
+    </div>
+</div>
+<div id="panel-ach-shop" class="panel">
+    <div class="panel-header">✨ 成就商店</div>
+    <div class="panel-body">
+        <div style="background: #2a2a2a; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
+            <h3 style="margin: 0;">可用點數：<span id="ach-points-display" style="color: #f39c12;">0</span></h3>
+            <p style="font-size: 0.85rem; color: #888; margin: 5px 0 0 0;">
+                解鎖成就可獲得點數
+            </p>
+        </div>
+        <div id="ach-shop-list"></div>
+    </div>
+</div>
           <div id="gym" class="panel">
             <div class="panel-header">地下拳館</div>
             <div class="panel-body">
