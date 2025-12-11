@@ -52,6 +52,12 @@ function initGame() {
         renderIntroJobs();
     }
 }
+//選單
+function toggleMenu() {
+    const sidebar = document.getElementById('sidebar');
+    // 切換 active class
+    sidebar.classList.toggle('active');
+}
 //成就
 const ACH_PAGE_SIZE = 6; // 每頁顯示 6 個成就
 let achPage = 1;
@@ -932,14 +938,20 @@ function log(message, type) {
 
 function showPanel(panelId) {
     document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
-    const p = document.getElementById(panelId);
-    if(p) p.classList.add('active');
-    if (panelId === 'achievements') {
-        renderAchievements();
-    }
+    
+    // 檢查元素是否存在 (防呆)
+    const targetPanel = document.getElementById(panelId);
+    if(targetPanel) targetPanel.classList.add('active');
+
     document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active'));
     const activeBtn = Array.from(document.querySelectorAll('.nav-btn')).find(btn => btn.getAttribute('onclick').includes(panelId));
     if (activeBtn) activeBtn.classList.add('active');
+
+    // ★ 新增這行：如果是手機版，點擊後自動收起選單
+    const sidebar = document.getElementById('sidebar');
+    if (window.innerWidth <= 768) {
+        sidebar.classList.remove('active');
+    }
 }
 
 function updateUI() {

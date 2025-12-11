@@ -22,7 +22,11 @@
     </div>
 
     <div id="app-container" style="display: none">
-      <aside id="sidebar">
+        <div id="mobile-header">
+            <button id="menu-toggle-btn" onclick="toggleMenu()">☰</button>
+            <span class="mobile-title">🌃 地下秩序</span>
+            <div style="width: 40px;"></div> </div>
+      <aside id="sidebar" class="mobile-hidden">
         <div class="brand">
           <h2>🌃 地下秩序</h2>
           <small>RPG Ver 2.5</small>
@@ -198,38 +202,28 @@
           <div id="home" class="panel active">
             <div class="panel-header">藏身處</div>
             <div class="panel-body">
-              <div class="card">
-                <h4>目前狀態</h4>
-                <p>
-                  裝備武器：<span
-                    id="weapon-display"
-                    style="color: #e74c3c; font-weight: bold"
-                    >無</span
-                  >
-                </p>
-              </div>
-              <br />
-              <div
-                style="
-                  background: var(--bg-panel);
-                  border-bottom: 2px solid var(--border-color);
-                  margin-bottom: 20px;
-                  padding-bottom: 20px;
-                "
-              >
-                <div
-                  style="
-                    display: flex;
-                    justify-content: space-between;
-                    align-items: center;
-                    margin-bottom: 10px;
-                  "
-                >
-                  <h4 style="margin: 0">🎒 我的背包</h4>
-                </div>
-                <div id="inventory-list" class="grid-2"></div>
-              </div>
-            </div>
+    <div class="card" style="margin-bottom: 20px;">
+        <h4>目前狀態</h4>
+        <p>
+            裝備武器：<span id="weapon-display" style="color: #e74c3c; font-weight: bold">無</span>
+        </p>
+    </div>
+
+    <div class="card">
+        <div style="
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            border-bottom: 1px solid #333; 
+            padding-bottom: 10px;
+        ">
+            <h4 style="margin: 0">🎒 我的背包</h4>
+        </div>
+        
+        <div id="inventory-list" class="grid-2"></div>
+    </div>
+</div>
           </div>
 
           <div id="jobs" class="panel">
