@@ -1,0 +1,164 @@
+/* css/style.css */
+
+:root {
+    /* 配色方案 (Dark Theme) */
+    --bg-dark: #121212;
+    --bg-panel: #1e1e1e;
+    --bg-sidebar: #181818;
+    --text-main: #e0e0e0;
+    --text-muted: #a0a0a0;
+    
+    --accent-blue: #3498db;    /* 體力顏色 */
+    --accent-red: #e74c3c;     /* 勇氣顏色 */
+    --accent-green: #2ecc71;   /* 金錢顏色 */
+    --accent-hover: #444;
+    
+    --border-color: #333;
+    --radius: 8px;
+}
+
+* { box-sizing: border-box; }
+
+body {
+    font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    background-color: var(--bg-dark);
+    color: var(--text-main);
+    margin: 0;
+    height: 100vh;
+    display: flex;
+}
+
+/* --- 佈局 --- */
+#app-container { display: flex; width: 100%; height: 100%; }
+
+/* 左側選單 */
+#sidebar {
+    width: 240px;
+    background-color: var(--bg-sidebar);
+    border-right: 1px solid var(--border-color);
+    display: flex;
+    flex-direction: column;
+    padding: 20px;
+}
+
+.brand h2 { margin: 0; color: var(--text-main); font-size: 1.4rem; letter-spacing: 1px; }
+.brand small { color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase; }
+.brand { margin-bottom: 30px; padding-bottom: 20px; border-bottom: 1px solid var(--border-color); }
+
+.nav-btn {
+    background: transparent;
+    color: var(--text-muted);
+    border: none;
+    padding: 12px 15px;
+    text-align: left;
+    width: 100%;
+    cursor: pointer;
+    border-radius: var(--radius);
+    transition: all 0.2s;
+    font-size: 1rem;
+    margin-bottom: 5px;
+}
+.nav-btn:hover { background-color: var(--accent-hover); color: white; }
+.nav-btn.active { background-color: #333; color: white; border-left: 3px solid var(--accent-blue); }
+
+.sidebar-footer { margin-top: auto; }
+.danger-btn { width: 100%; padding: 10px; background: #522; color: #faa; border: 1px solid #733; border-radius: var(--radius); cursor: pointer; }
+
+/* 右側主內容 */
+#main-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    padding: 20px 40px;
+    overflow-y: auto;
+}
+
+/* 狀態列 (Header) */
+#status-bar {
+    display: grid;
+    grid-template-columns: 1fr 2fr 2fr 1fr;
+    gap: 20px;
+    background: var(--bg-panel);
+    padding: 15px 25px;
+    border-radius: var(--radius);
+    margin-bottom: 20px;
+    border: 1px solid var(--border-color);
+}
+
+.stat-label { font-size: 0.85rem; color: var(--text-muted); margin-bottom: 5px; }
+.money-text { color: var(--accent-green); font-size: 1.2rem; font-weight: bold; }
+
+/* 進度條樣式 */
+.progress-track {
+    width: 100%;
+    height: 10px;
+    background: #333;
+    border-radius: 5px;
+    overflow: hidden;
+}
+.progress-fill { height: 100%; background: var(--accent-blue); transition: width 0.3s ease; }
+.nerve-fill { background: var(--accent-red); }
+
+/* 訊息紀錄 (Log) */
+#log-area {
+    height: 120px;
+    background: #000;
+    border: 1px solid #333;
+    border-radius: var(--radius);
+    padding: 10px;
+    overflow-y: auto;
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 0.9rem;
+    margin-bottom: 20px;
+    color: #ccc;
+}
+.log-entry { margin-bottom: 4px; }
+.log-success { color: var(--accent-green); }
+.log-fail { color: var(--accent-red); }
+
+/* 面板通用樣式 */
+.panel { display: none; animation: fadeIn 0.3s; }
+.panel.active { display: block; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+
+.panel-header { font-size: 1.5rem; font-weight: bold; margin-bottom: 15px; border-bottom: 2px solid var(--border-color); padding-bottom: 10px; }
+.panel-body .desc { color: var(--text-muted); margin-bottom: 20px; }
+
+/* 卡片與格線 */
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.card { background: var(--bg-panel); padding: 20px; border-radius: var(--radius); border: 1px solid var(--border-color); }
+.text-center { text-align: center; }
+
+.stat-big { font-size: 2rem; font-weight: bold; margin: 10px 0; color: white; }
+
+/* 按鈕 */
+.action-btn {
+    background: var(--accent-blue);
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: bold;
+    transition: transform 0.1s;
+}
+.action-btn:active { transform: scale(0.98); }
+
+/* 犯罪卡片列表 */
+.crime-list { display: flex; flex-direction: column; gap: 10px; }
+.crime-card {
+    display: flex;
+    align-items: center;
+    background: var(--bg-panel);
+    border: 1px solid var(--border-color);
+    padding: 15px;
+    border-radius: var(--radius);
+    cursor: pointer;
+    text-align: left;
+    color: var(--text-main);
+    transition: background 0.2s;
+}
+.crime-card:hover { background: #2a2a2a; border-color: #555; }
+.crime-icon { font-size: 2rem; margin-right: 15px; }
+.crime-info h4 { margin: 0 0 5px 0; }
+.crime-info small { color: var(--text-muted); }

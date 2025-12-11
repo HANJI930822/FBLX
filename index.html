@@ -1,0 +1,114 @@
+<body>
+    <div id="app-container">
+        <aside id="sidebar">
+            <div class="brand">
+                <h2>🌃 地下秩序</h2>
+                <small>Underground Order</small>
+            </div>
+            <nav>
+                <button onclick="showPanel('home')" class="nav-btn active">🏠 藏身處</button>
+                <button onclick="showPanel('gym')" class="nav-btn">🏋️ 地下拳館</button>
+                <button onclick="showPanel('crimes')" class="nav-btn">🔫 街頭犯罪</button>
+            </nav>
+            <div class="sidebar-footer">
+                <button onclick="resetGame()" class="danger-btn">⚠️ 重置存檔</button>
+            </div>
+        </aside>
+
+        <main id="main-content">
+            <header id="status-bar">
+                <div class="stat-group">
+                    <div class="stat-label">💰 現金</div>
+                    <div class="stat-value money-text">$<span id="money">0</span></div>
+                </div>
+                
+                <div class="stat-group">
+                    <div class="stat-label">⚡ 體力 <span id="energy">0</span>/<span id="max_energy">0</span></div>
+                    <div class="progress-track">
+                        <div id="energy-bar" class="progress-fill" style="width: 0%;"></div>
+                    </div>
+                </div>
+
+                <div class="stat-group">
+                    <div class="stat-label">🧠 勇氣 <span id="nerve">0</span>/<span id="max_nerve">0</span></div>
+                    <div class="progress-track">
+                        <div id="nerve-bar" class="progress-fill nerve-fill" style="width: 0%;"></div>
+                    </div>
+                </div>
+                
+                <div class="stat-group">
+                    <div class="stat-label">💪 戰力總和</div>
+                    <div class="stat-value"><span id="strength">0</span></div>
+                </div>
+            </header>
+
+            <div id="log-area">
+                <div class="log-entry system-msg">系統連線成功... 等待指令...</div>
+            </div>
+
+            <div id="content-area">
+                <div id="home" class="panel active">
+                    <div class="panel-header">藏身處</div>
+                    <div class="panel-body">
+                        <p>這裡是這座城市唯一安全的地方。</p>
+                        <div class="card">
+                            <h4>目前狀態</h4>
+                            <p>你是一個剛入行的街頭混混。警察還不知道你的名字。</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="gym" class="panel">
+                    <div class="panel-header">地下拳館</div>
+                    <div class="panel-body">
+                        <p class="desc">空氣中瀰漫著汗水與血腥味。</p>
+                        <div class="grid-2">
+                            <div class="card text-center">
+                                <h4>力量 (Strength)</h4>
+                                <div class="stat-big" id="gym-str">0</div>
+                                <button class="action-btn" onclick="train('strength')">舉重訓練 (-5 體力)</button>
+                            </div>
+                            <div class="card text-center">
+                                <h4>速度 (Speed)</h4>
+                                <div class="stat-big" id="gym-spd">0</div>
+                                <button class="action-btn" onclick="train('speed')">沙包訓練 (-5 體力)</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="crimes" class="panel">
+                    <div class="panel-header">街頭犯罪</div>
+                    <div class="panel-body">
+                        <p class="desc">富貴險中求。別被抓到。</p>
+                        <div class="crime-list">
+                            <button class="crime-card" onclick="commitCrime('search_trash')">
+                                <div class="crime-icon">🗑️</div>
+                                <div class="crime-info">
+                                    <h4>翻垃圾桶</h4>
+                                    <small>消耗 2 勇氣 | 低風險</small>
+                                </div>
+                            </button>
+                            <button class="crime-card" onclick="commitCrime('shoplift')">
+                                <div class="crime-icon">🏪</div>
+                                <div class="crime-info">
+                                    <h4>超商偷竊</h4>
+                                    <small>消耗 4 勇氣 | 中風險</small>
+                                </div>
+                            </button>
+                            <button class="crime-card" onclick="commitCrime('rob_granny')">
+                                <div class="crime-icon">👵</div>
+                                <div class="crime-info">
+                                    <h4>搶劫路人</h4>
+                                    <small>消耗 10 勇氣 | 高風險</small>
+                                </div>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+    <script src="js/data.js"></script>
+    <script src="js/game.js"></script>
+</body>
