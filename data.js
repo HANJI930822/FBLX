@@ -997,196 +997,161 @@ const achievementList = [
     { id: 'max_stats', name: '人類極限', desc: '飽食與口渴都維持 100', check: p => p.hunger >= 100 && p.thirst >= 100 },
     { id: 'endgame', name: '地下秩序', desc: '等級20 + 住別墅 + 持有AK47', check: p => p.level >= 20 && p.house === 'villa' && (p.weapon === 'ak47' || (p.inventory['ak47'] && p.inventory['ak47'] > 0)) }
 ];
-// === 動態目標系統 ===
+// data.js
 
-// 每日挑戰池（每天隨機抽3個）
-const dailyChallengePool = [
-    {
-        id: 'daily_train_3',
-        name: '健身狂',
-        desc: '在健身房訓練 3 次',
-        check: (p) => p.daily_progress?.train_count >= 3,
-        reward: { money: 200, exp: 50 }
-    },
-    {
-        id: 'daily_work_3',
-        name: '勤奮工作',
-        desc: '工作 3 次',
-        check: (p) => p.daily_progress?.work_count >= 3,
-        reward: { money: 300, exp: 30 }
-    },
-    {
-        id: 'daily_fight_5',
-        name: '街頭霸主',
-        desc: '贏得 5 場戰鬥',
-        check: (p) => p.daily_progress?.fights_won >= 5,
-        reward: { money: 500, exp: 100 }
-    },
-    {
-        id: 'daily_no_crime',
-        name: '遵紀守法',
-        desc: '今天不犯任何罪',
-        check: (p) => p.daily_progress?.crimes_count === 0,
-        reward: { money: 150, exp: 20 }
-    },
-    {
-        id: 'daily_eat_5',
-        name: '美食家',
-        desc: '吃 5 次食物或飲品',
-        check: (p) => p.daily_progress?.food_eaten >= 5,
-        reward: { money: 100, exp: 30 }
-    },
-    {
-        id: 'daily_buy_3',
-        name: '購物狂',
-        desc: '購買 3 件物品',
-        check: (p) => p.daily_progress?.items_bought >= 3,
-        reward: { money: 150, exp: 25 }
+// 輔助工具：從物件中隨機抓一個 Key
+const getRandomKey = (obj) => {
+    const keys = Object.keys(obj);
+    return keys[Math.floor(Math.random() * keys.length)];
+};
+
+// ★ 高度隨機任務生成器 (Ver 2.0)
+const MissionGenerator = {
+    
+    // 1. 指定狩獵 (直接顯示敵人名字)
+    hunt_specific: (level) => {
+        // 排除 Boss，隨機抓一個倒楣鬼
+        const enemies = Object.keys(enemyData).filter(k => k !== 'boss');
+        const targetId = enemies[Math.floor(Math.random() * enemies.length)];
+        const targetName = enemyData[targetId].name;
+        
+        // 數量隨等級浮動
+        const count = Math.max(1, Math.floor(1 + level * 0.15 + Math.random() * 2));
+        
+        return {
+            type: 'hunt_specific',
+            // 標題直接就是目標
+            name: `擊敗：${targetName}`, 
+            desc: `累積擊敗 ${count} 次`,
+            targetId: targetId,
+            targetVal: count,
+            check: (p, m) => (p.daily_progress.enemies_killed?.[m.targetId] || 0) >= m.targetVal,
+            reward: { money: count * 120 + 100, exp: count * 60 }
+        };
     },
 
-    // === 新增：生存類 ===
-    {
-        id: 'daily_survive',
-        name: '穩定生活',
-        desc: '飢餓和口渴保持在 50 以上',
-        check: (p) => p.hunger >= 50 && p.thirst >= 50,
-        reward: { money: 100, exp: 20 }
-    },
-    {
-        id: 'daily_hp_full',
-        name: '健康第一',
-        desc: '血量保持滿血狀態',
-        check: (p) => p.hp >= p.max_hp,
-        reward: { money: 200, exp: 40 }
-    },
-    {
-        id: 'daily_no_damage',
-        name: '無傷戰士',
-        desc: '贏得戰鬥但血量不低於 80%',
-        check: (p) => p.daily_progress?.fights_won >= 1 && p.hp >= p.max_hp * 0.8,
-        reward: { money: 300, exp: 60 }
+    // 2. 指定犯罪 (直接顯示犯罪名稱)
+    crime_specific: (level) => {
+        const crimeId = getRandomKey(crimeData);
+        const crimeName = crimeData[crimeId].name;
+        const count = Math.max(1, Math.floor(1 + Math.random() * 3)); // 1~3次
+
+        return {
+            type: 'crime_specific',
+            name: `執行：${crimeName}`,
+            desc: `成功完成 ${count} 次`,
+            targetId: crimeId,
+            targetVal: count,
+            check: (p, m) => (p.daily_progress.crimes_specific?.[m.targetId] || 0) >= m.targetVal,
+            reward: { money: count * 100, exp: count * 40 }
+        };
     },
 
-    // === 新增：賺錢類 ===
-    {
-        id: 'daily_earn_1000',
-        name: '小富翁',
-        desc: '今天賺取 1000 元（含工作、犯罪、戰鬥）',
-        check: (p) => p.daily_progress?.money_earned >= 1000,
-        reward: { money: 500, exp: 50 }
-    },
-    {
-        id: 'daily_spend_500',
-        name: '消費達人',
-        desc: '今天花費 500 元購物',
-        check: (p) => p.daily_progress?.money_spent >= 500,
-        reward: { money: 200, exp: 30 }
-    },
-    {
-        id: 'daily_rich',
-        name: '財富自由',
-        desc: '持有 5000 元以上',
-        check: (p) => p.money >= 5000,
-        reward: { money: 300, exp: 50 }
+    // 3. 指定消費 (指定吃某種東西)
+    consume_specific: (level) => {
+        // 只抓食物或飲料
+        const consumables = Object.keys(itemData).filter(k => 
+            itemData[k].category === 'food' || itemData[k].category === 'drink'
+        );
+        const itemId = consumables[Math.floor(Math.random() * consumables.length)];
+        const itemName = itemData[itemId].name;
+        const count = Math.max(1, Math.floor(1 + Math.random() * 2));
+
+        return {
+            type: 'consume_specific',
+            name: `需求：${itemName}`,
+            desc: `食用/飲用 ${count} 個`,
+            targetId: itemId,
+            targetVal: count,
+            check: (p, m) => (p.daily_progress.items_consumed?.[m.targetId] || 0) >= m.targetVal,
+            reward: { money: count * itemData[itemId].cost + 100, exp: 50 } // 補貼餐費
+        };
     },
 
-    // === 新增：戰鬥類 ===
-    {
-        id: 'daily_boss_fight',
-        name: '挑戰強敵',
-        desc: '挑戰並擊敗幫派頭目或更強敵人',
-        check: (p) => p.daily_progress?.defeated_tough_enemy >= 1,
-        reward: { money: 800, exp: 150 }
-    },
-    {
-        id: 'daily_win_streak',
-        name: '連勝王',
-        desc: '連續贏得 3 場戰鬥',
-        check: (p) => p.daily_progress?.win_streak >= 3,
-        reward: { money: 400, exp: 80 }
-    },
-    {
-        id: 'daily_no_fight',
-        name: '和平主義者',
-        desc: '今天不參與任何戰鬥',
-        check: (p) => p.daily_progress?.fights_won === 0,
-        reward: { money: 150, exp: 30 }
+    // 4. 累積賺錢 (純數字變化)
+    earn_money: (level) => {
+        // 金額隨機度高一點：例如 100 ~ 1000 之間
+        const target = (Math.floor(Math.random() * 10) + 1) * 100 + (level * 50);
+        return {
+            type: 'earn',
+            name: `目標：賺取現金`,
+            desc: `今日獲利 $${target}`,
+            targetVal: target,
+            check: (p, m) => (p.daily_progress.money_earned || 0) >= m.targetVal,
+            reward: { exp: Math.floor(target / 4) }
+        };
     },
 
-    // === 新增：犯罪類 ===
-    {
-        id: 'daily_crime_3',
-        name: '職業罪犯',
-        desc: '成功犯罪 3 次',
-        check: (p) => p.daily_progress?.crimes_count >= 3,
-        reward: { money: 400, exp: 60 }
-    },
-    {
-        id: 'daily_perfect_crime',
-        name: '完美犯罪',
-        desc: '犯罪成功率 100%（至少犯罪 3 次）',
-        check: (p) => p.daily_progress?.crimes_count >= 3 && p.daily_progress?.crime_fails === 0,
-        reward: { money: 600, exp: 100 }
-    },
-
-    // === 新增：技能類 ===
-    {
-        id: 'daily_train_all',
-        name: '全能訓練',
-        desc: '力量和速度各訓練至少 1 次',
-        check: (p) => p.daily_progress?.train_str >= 1 && p.daily_progress?.train_spd >= 1,
-        reward: { money: 250, exp: 50 }
-    },
-    {
-        id: 'daily_level_up',
-        name: '成長之路',
-        desc: '今天升級至少 1 次',
-        check: (p) => p.daily_progress?.level_ups >= 1,
-        reward: { money: 300, exp: 80 }
-    },
-
-    // === 新增：時間類 ===
-    {
-        id: 'daily_early_bird',
-        name: '早起的鳥兒',
-        desc: '在早上 6 點前完成任一活動',
-        check: (p) => p.daily_progress?.early_activity === true,
-        reward: { money: 150, exp: 40 }
-    },
-    {
-        id: 'daily_night_owl',
-        name: '夜貓子',
-        desc: '在晚上 22 點後完成任一活動',
-        check: (p) => p.daily_progress?.late_activity === true,
-        reward: { money: 150, exp: 40 }
-    },
-
-    // === 新增：困難挑戰 ===
-    {
-        id: 'daily_multitask',
-        name: '多才多藝',
-        desc: '工作、戰鬥、訓練、犯罪各完成至少 1 次',
-        check: (p) => p.daily_progress?.work_count >= 1 && 
-                      p.daily_progress?.fights_won >= 1 && 
-                      p.daily_progress?.train_count >= 1 && 
-                      p.daily_progress?.crimes_count >= 1,
-        reward: { money: 1000, exp: 200 }
-    },
-    {
-        id: 'daily_minimalist',
-        name: '極簡主義',
-        desc: '今天不購買任何物品',
-        check: (p) => p.daily_progress?.items_bought === 0,
-        reward: { money: 200, exp: 40 }
-    },
-    {
-        id: 'daily_perfect_day',
-        name: '完美的一天',
-        desc: 'HP、飢餓、口渴都保持 80 以上',
-        check: (p) => p.hp >= p.max_hp * 0.8 && p.hunger >= 80 && p.thirst >= 80,
-        reward: { money: 400, exp: 80 }
+    // 5. 訓練狂 (指定訓練項目)
+    train_stat: (level) => {
+        const stat = Math.random() > 0.5 ? 'strength' : 'speed';
+        const statName = stat === 'strength' ? '力量' : '速度';
+        const count = Math.floor(2 + Math.random() * 4);
+        
+        return {
+            type: 'train_stat',
+            name: `鍛鍊：${statName}`,
+            desc: `訓練 ${count} 次`,
+            targetStat: stat,
+            targetVal: count,
+            check: (p, m) => {
+                // 需要去 game.js 的 train 函數確認是否有紀錄 train_str / train_spd
+                // 假設原本的 train 函數有這兩行：
+                // if (stat === 'strength') player.daily_progress.train_str++
+                // if (stat === 'speed') player.daily_progress.train_spd++
+                const key = m.targetStat === 'strength' ? 'train_str' : 'train_spd';
+                return (p.daily_progress[key] || 0) >= m.targetVal;
+            },
+            reward: { money: 150, exp: 100 }
+        };
     }
-];
+};
+
+// 產生器函數 (權重分配)
+function generateRandomDailyMissions(playerLevel) {
+    const missions = [];
+    const types = ['hunt_specific', 'crime_specific', 'consume_specific', 'earn_money', 'train_stat'];
+    
+    // 隨機抽 3 個不重複的類型
+    // 洗牌算法
+    for (let i = types.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [types[i], types[j]] = [types[j], types[i]];
+    }
+    
+    // 取前 3 個
+    for(let i=0; i<3; i++) {
+        const type = types[i];
+        const mission = MissionGenerator[type](playerLevel);
+        mission.id = `rnd_${Date.now()}_${i}`;
+        missions.push(mission);
+    }
+    
+    return missions;
+}
+
+// 產生今天的 3 個隨機任務
+function generateRandomDailyMissions(playerLevel) {
+    const categories = Object.keys(MissionGenerator);
+    const missions = [];
+    
+    // 隨機挑選 3 個不同的類型
+    const selectedCats = [];
+    while(selectedCats.length < 3) {
+        const cat = categories[Math.floor(Math.random() * categories.length)];
+        if(!selectedCats.includes(cat)) selectedCats.push(cat);
+    }
+    
+    // 生成任務物件
+    selectedCats.forEach(cat => {
+        const missionObj = MissionGenerator[cat](playerLevel);
+        // 給每個任務一個臨時的唯一 ID (為了追蹤完成狀態)
+        missionObj.id = `daily_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        missions.push(missionObj);
+    });
+    
+    return missions;
+}
 const weatherData = {
     'sunny': { 
         name: '☀️ 晴朗', 
@@ -1223,77 +1188,227 @@ const weatherData = {
 
 // 主線任務（階段性目標）
 const mainQuests = [
+    // ==========================================
+    // 第一章：底層求生 (生存與溫飽)
+    // ==========================================
     {
-        id: 'main_survive_3',
-        name: '新手存活',
-        desc: '存活到第 3 天',
-        check: (p) => p.day >= 3,
-        reward: { money: 500, exp: 100, item: 'bandage' },
+        id: 'ch1_survive',
+        name: 'Chapter 1: 活下去',
+        desc: '歡迎來到地獄。先試著活過第 1 天。',
+        check: (p) => p.day >= 2,
+        reward: { money: 100, exp: 50, item: 'expired_bread' },
         stage: 1
     },
     {
-        id: 'main_level_5',
-        name: '初級戰士',
-        desc: '達到 Lv.5',
-        check: (p) => p.level >= 5,
-        reward: { money: 1000, exp: 200, item: 'wooden_bat' },
+        id: 'ch1_work',
+        name: '第一份薪水',
+        desc: '找份工作並打卡上班 1 次，我们需要錢買食物。',
+        check: (p) => p.stats.times_worked >= 1,
+        reward: { money: 100, exp: 50 },
         stage: 1
     },
     {
-        id: 'main_first_house',
-        name: '安居樂業',
-        desc: '搬離廢棄木屋',
+        id: 'ch1_eat',
+        name: '填飽肚子',
+        desc: '吃點東西吧。累計吃下 3 次食物。',
+        check: (p) => p.stats.food_eaten >= 3,
+        reward: { money: 50, exp: 50, item: 'water' },
+        stage: 1
+    },
+    {
+        id: 'ch1_home',
+        name: '不再流浪',
+        desc: '一直睡公園不是辦法。搬進「廢棄木屋」以外的任何房子。',
         check: (p) => p.house !== 'shack',
-        reward: { money: 2000, exp: 300 },
+        reward: { money: 500, exp: 100 },
         stage: 1
     },
     {
-        id: 'main_10k_money',
-        name: '小有積蓄',
-        desc: '累積 $10,000',
-        check: (p) => p.money >= 10000,
-        reward: { money: 0, exp: 500, item: 'first_aid_kit' },
+        id: 'ch1_weapon',
+        name: '自我防衛',
+        desc: '這條街很危險。裝備任何一把武器（哪怕是紅磚頭）。',
+        check: (p) => p.weapon !== null,
+        reward: { money: 200, exp: 100, item: 'bandage' },
+        stage: 1
+    },
+
+    // ==========================================
+    // 第二章：街頭混混 (犯罪與積累)
+    // ==========================================
+    {
+        id: 'ch2_level5',
+        name: 'Chapter 2: 嶄露頭角',
+        desc: '達到等級 5。',
+        check: (p) => p.level >= 5,
+        reward: { money: 1000, exp: 200 },
         stage: 2
     },
     {
-        id: 'main_level_15',
-        name: '進階戰士',
-        desc: '達到 Lv.15',
+        id: 'ch2_crime',
+        name: '弄髒雙手',
+        desc: '成功犯罪 5 次。',
+        check: (p) => p.stats.crimes_success >= 5,
+        reward: { money: 500, exp: 150, item: 'brass_knuckles' }, // 送指虎
+        stage: 2
+    },
+    {
+        id: 'ch2_gym',
+        name: '鍛鍊身體',
+        desc: '去地下拳館訓練。力量或速度任一項達到 20。',
+        check: (p) => p.strength >= 20 || p.speed >= 20,
+        reward: { money: 0, exp: 300, item: 'protein_bar' },
+        stage: 2
+    },
+    {
+        id: 'ch2_fight',
+        name: '街頭鬥毆',
+        desc: '在街頭火拚中贏得 3 場勝利。',
+        check: (p) => p.stats.fights_won >= 3,
+        reward: { money: 800, exp: 200 },
+        stage: 2
+    },
+    {
+        id: 'ch2_savings',
+        name: '第一桶金',
+        desc: '持有現金超過 $5,000。',
+        check: (p) => p.money >= 5000,
+        reward: { money: 0, exp: 500, item: 'lucky_charm' }, // 送飾品
+        stage: 2
+    },
+
+    // ==========================================
+    // 第三章：暴力與美學 (武裝與進修)
+    // ==========================================
+    {
+        id: 'ch3_level15',
+        name: 'Chapter 3: 狠角色',
+        desc: '達到等級 15。',
         check: (p) => p.level >= 15,
-        reward: { money: 5000, exp: 1000 },
-        stage: 2
+        reward: { money: 3000, exp: 1000 },
+        stage: 3
     },
     {
-        id: 'main_edu_1',
-        name: '好學不倦',
-        desc: '完成 1 門課程',
+        id: 'ch3_house',
+        name: '有個像樣的家',
+        desc: '搬進「老公寓」或更好的房子。',
+        check: (p) => p.house !== 'shack' && p.house !== 'rent_room', // 假設你有中間房產，或者直接檢查是否為 apartment 以上
+        // 簡單寫法：直接檢查幾個高級房產ID
+        check: (p) => ['apartment', 'penthouse', 'villa', 'island'].includes(p.house),
+        reward: { money: 2000, exp: 500 },
+        stage: 3
+    },
+    {
+        id: 'ch3_edu',
+        name: '知識份子',
+        desc: '完成 1 門課程。腦袋比子彈更有用。',
         check: (p) => p.completed_courses.length >= 1,
-        reward: { money: 3000, exp: 500 },
-        stage: 2
-    },
-    {
-        id: 'main_fight_boss',
-        name: '挑戰強者',
-        desc: '擊敗 Boss「城市主宰者」',
-        check: (p) => p.achievements.includes('kill_boss'),
-        reward: { money: 10000, exp: 2000, item: 'ak47' },
+        reward: { money: 5000, exp: 1000 },
         stage: 3
     },
     {
-        id: 'main_villa',
-        name: '地產大亨',
-        desc: '搬進私人別墅',
-        check: (p) => p.house === 'villa',
-        reward: { money: 50000, exp: 5000 },
+        id: 'ch3_killer',
+        name: '賞金獵人',
+        desc: '擊敗 10 個敵人。',
+        check: (p) => p.stats.fights_won >= 10,
+        reward: { money: 3000, exp: 800, item: 'police_baton' },
         stage: 3
     },
     {
-        id: 'main_level_30',
-        name: '傳奇人物',
-        desc: '達到 Lv.30',
+        id: 'ch3_gear',
+        name: '全副武裝',
+        desc: '同時裝備武器、防具和飾品。',
+        check: (p) => p.weapon && p.armor && p.accessory,
+        reward: { money: 2000, exp: 500 },
+        stage: 3
+    },
+
+    // ==========================================
+    // 第四章：地下秩序 (權力與擴張)
+    // ==========================================
+    {
+        id: 'ch4_level30',
+        name: 'Chapter 4: 區域角頭',
+        desc: '達到等級 30。',
         check: (p) => p.level >= 30,
-        reward: { money: 100000, exp: 10000 },
-        stage: 3
+        reward: { money: 10000, exp: 5000 },
+        stage: 4
+    },
+    {
+        id: 'ch4_rich',
+        name: '財富自由',
+        desc: '持有現金超過 $100,000。',
+        check: (p) => p.money >= 100000,
+        reward: { money: 0, exp: 2000, item: 'gold_bar' },
+        stage: 4
+    },
+    {
+        id: 'ch4_penthouse',
+        name: '俯瞰城市',
+        desc: '搬進「豪華頂樓」或「私人別墅」。',
+        check: (p) => ['penthouse', 'villa', 'island'].includes(p.house),
+        reward: { money: 20000, exp: 3000 },
+        stage: 4
+    },
+    {
+        id: 'ch4_stat_limit',
+        name: '人類極限',
+        desc: '力量或速度任一項達到 100。',
+        check: (p) => p.strength >= 100 || p.speed >= 100,
+        reward: { money: 5000, exp: 5000, item: 'nano_suit' }, // 送高級防具
+        stage: 4
+    },
+    {
+        id: 'ch4_hunter',
+        name: '清理門戶',
+        desc: '擊敗「職業殺手」(hitman) 或更強的敵人。',
+        check: (p) => (p.enemyLevels['hitman'] || 0) > 1 || (p.enemyLevels['boss'] || 0) > 0,
+        // 註：這需要你的戰鬥系統有記錄 enemyLevels，或者你可以改成檢查 stats.fights_won > 50
+        reward: { money: 15000, exp: 4000, item: 'sniper_rifle' }, // 假設你有這把槍，沒有的話改 ak47
+        stage: 4
+    },
+
+    // ==========================================
+    // 終章：傳奇 (統治者)
+    // ==========================================
+    {
+        id: 'ch5_boss',
+        name: 'Chapter 5: 新秩序',
+        desc: '擊敗最終 Boss「城市主宰者」。',
+        check: (p) => p.achievements.includes('kill_boss'),
+        reward: { money: 100000, exp: 50000, item: 'boss_crown' },
+        stage: 5
+    },
+    {
+        id: 'ch5_villa',
+        name: '地產大亨',
+        desc: '搬進「私人別墅」或「私人島嶼」。',
+        check: (p) => ['villa', 'island'].includes(p.house),
+        reward: { money: 50000, exp: 10000 },
+        stage: 5
+    },
+    {
+        id: 'ch5_legend',
+        name: '活著的傳奇',
+        desc: '達到等級 50。',
+        check: (p) => p.level >= 50,
+        reward: { money: 1000000, exp: 100000 },
+        stage: 5
+    },
+    {
+        id: 'ch5_arsenal',
+        name: '軍火庫',
+        desc: '擁有 RPG火箭筒 或 光劍玩具(改)。',
+        check: (p) => p.inventory['rpg_launcher'] > 0 || p.inventory['laser_sword'] > 0 || p.weapon === 'rpg_launcher' || p.weapon === 'laser_sword',
+        reward: { money: 50000, exp: 20000 },
+        stage: 5
+    },
+    {
+        id: 'ch5_island',
+        name: '建立國度',
+        desc: '買下「私人島嶼」。遊戲的頂點。',
+        check: (p) => p.house === 'island',
+        reward: { money: 9999999, exp: 9999999, item: 'achievement_sword' },
+        stage: 6 // 隱藏階段
     }
 ];
 
@@ -1347,6 +1462,10 @@ const achievementShop = {
         titleName: '【傳奇】'
     }
 };
-
+Object.values(itemData).forEach(item => {
+    if ((item.type === 'weapon' || item.type === 'armor' || item.type === 'accessory') && !item.sell_price) {
+        item.sell_price = Math.floor(item.cost * 0.7);
+    }
+});
 
 let player = { ...defaultPlayerState };

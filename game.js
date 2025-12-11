@@ -7,6 +7,7 @@ let playerAnimInterval = null;
 let enemyAnimInterval = null;
 let jobPage = 1;
 const JOB_PAGE_SIZE = 4;
+let currentQuestStage = 1;
 // 戰鬥狀態旗標
 let isFighting = false;
 
@@ -28,7 +29,10 @@ function initGame() {
             // 防呆檢查
             if (!player.job || !jobData[player.job]) { forceReset(); return; }
             if (player.hp <= 0) { forceReset(); return; }
-
+            if (player.daily_challenges && player.daily_challenges.length > 0 && typeof player.daily_challenges[0] === 'string') {
+                console.log("偵測到舊版每日任務，強制刷新...");
+                generateDailyChallenges();
+            }
             // 補全屬性
             if (!player.house) player.house = 'shack';
             if (!player.completed_courses) player.completed_courses = [];
@@ -56,9 +60,29 @@ function initGame() {
                 player.weather = 'sunny';
                 updateWeather(); // 如果是舊存檔，隨機給一個天氣
                 }
-    initDailyChallenges();
+            initDailyChallenges();
             player.time = Math.floor(player.time);
+            let maxCompletedStage = 0;
+            player.main_quests_completed.forEach(qid => {
+                const q = mainQuests.find(mq => mq.id === qid);
+                if (q && q.stage > maxCompletedStage) {
+                    maxCompletedStage = q.stage;
+                }
+            });
 
+            // 設定當前頁面為「最大已完成章節」或「下一章」(如果該章節還沒全解完，就停在那章，如果全解完就跳下一章)
+            // 這裡簡單處理：直接設定為 (最大已完成章節) 或是 1
+            // 但更聰明的做法是：檢查該章節是否還有未完成的任務，如果都完成了，就跳下一章
+
+            // 簡單邏輯：預設跳到最大已完成章節，如果為0就跳1
+            currentQuestStage = maxCompletedStage === 0 ? 1 : maxCompletedStage;
+
+            // 如果當前章節的所有任務都完成了，自動跳到下一章 (除非已經是最後一章)
+            const currentStageQuests = mainQuests.filter(q => q.stage === currentQuestStage);
+            const isAllDone = currentStageQuests.every(q => player.main_quests_completed.includes(q.id));
+            if (isAllDone && currentQuestStage < 5) { // 假設5是最大章
+                currentQuestStage++;
+            }
             if (!player.stats) {
                    player.stats = { fights_won:0, crimes_success:0, times_worked:0, items_bought:0, money_earned:0, food_eaten:0, days_lived:0 };
              }
@@ -415,8 +439,11 @@ async function simulateFight(originalEnemy, enemyId) {
         player.stats.money_earned += originalEnemy.reward;
 
         player.stats.fights_won++;
+
         if (player.daily_progress) {
         player.daily_progress.fights_won = (player.daily_progress.fights_won || 0) + 1;
+        if (!player.daily_progress.enemies_killed) player.daily_progress.enemies_killed = {};
+            player.daily_progress.enemies_killed[enemyId] = (player.daily_progress.enemies_killed[enemyId] || 0) + 1;
         checkDailyChallenges();
     }
     checkMainQuests();
@@ -703,8 +730,10 @@ function commitCrime(crimeId) {
             if (player.hp <= 0) {
                 setTimeout(() => gameOver("被打死了肏"), 1000);
             }
+            if (!player.daily_progress.crimes_specific) player.daily_progress.crimes_specific = {};
+                player.daily_progress.crimes_specific[crimeId] = (player.daily_progress.crimes_specific[crimeId] || 0) + 1;
         }
-        
+        checkDailyChallenges();
         checkAchievements();
         updateUI();
     } else { 
@@ -1163,8 +1192,11 @@ function useItem(itemId) {
     if (item.category === 'food' || item.category === 'drink') {
         player.stats.food_eaten++;
     }
+    
      if (player.daily_progress) {
         player.daily_progress.food_eaten++;
+        if (!player.daily_progress.items_consumed) player.daily_progress.items_consumed = {};
+        player.daily_progress.items_consumed[itemId] = (player.daily_progress.items_consumed[itemId] || 0) + 1;
         checkDailyChallenges();
     }
     if (item.extraEffect) {
@@ -1450,7 +1482,102 @@ function showPanel(panelId) {
         renderAchShop();
     }
 }
+// game.js
 
+function renderMainQuests() {
+    const list = document.getElementById('main-quest-list');
+    if (!list) return;
+    
+    list.innerHTML = '';
+
+    // 1. 自動定位：如果是第一次打開（或重整），自動跳到玩家目前還沒完成的最早章節
+    // 這樣玩家一打開就能看到自己該做什麼
+    // 我們只在 currentQuestStage 為 1 且還沒初始化過時做這件事，或者你可以選擇手動翻頁
+    // 這裡為了方便，我們不做強制跳轉，保留玩家翻頁的狀態
+    
+    // 2. 篩選出當前頁數(章節)的所有任務
+    const questsToShow = mainQuests.filter(q => q.stage === currentQuestStage);
+    
+    // 取得最大章節數 (用來控制下一頁按鈕)
+    const maxStage = Math.max(...mainQuests.map(q => q.stage));
+
+    // 3. 顯示章節標題
+    const chapterTitle = document.createElement('h4');
+    chapterTitle.style.textAlign = 'center';
+    chapterTitle.style.margin = '0 0 15px 0';
+    chapterTitle.style.color = '#f1c40f';
+    chapterTitle.style.borderBottom = '1px dashed #444';
+    chapterTitle.style.paddingBottom = '10px';
+    
+    // 根據章節給標題 (這裡簡單用數字，你也可以在 data.js 定義章節名稱)
+    const chapterNames = ["", "第一章：底層求生", "第二章：街頭混混", "第三章：暴力美學", "第四章：地下秩序", "終章：傳奇", "隱藏章節"];
+    chapterTitle.innerText = chapterNames[currentQuestStage] || `第 ${currentQuestStage} 章`;
+    list.appendChild(chapterTitle);
+
+    // 4. 渲染任務卡片
+    if (questsToShow.length === 0) {
+        list.innerHTML += '<p style="text-align:center; color:#666;">此章節沒有任務。</p>';
+    } else {
+        questsToShow.forEach(quest => {
+            const isCompleted = player.main_quests_completed.includes(quest.id);
+            
+            const card = document.createElement('div');
+            card.className = 'card';
+            
+            // 樣式調整：完成的變暗，未完成的亮顯
+            if (isCompleted) {
+                card.style.opacity = '0.6';
+                card.style.borderLeft = '4px solid #2ecc71'; // 綠色
+                card.style.background = '#1a1a1a';
+            } else {
+                card.style.opacity = '1';
+                card.style.borderLeft = '4px solid #e74c3c'; // 紅色 (未完成)
+                card.style.background = '#252525';
+                card.style.boxShadow = '0 0 5px rgba(231, 76, 60, 0.2)'; // 微微發光
+            }
+            
+            let rewardText = '';
+            if (quest.reward.money) rewardText += `💰 $${quest.reward.money} `;
+            if (quest.reward.exp) rewardText += `⭐ ${quest.reward.exp} EXP `;
+            if (quest.reward.item) rewardText += `🎁 ${itemData[quest.reward.item]?.name || '物品'}`;
+            
+            card.innerHTML = `
+                <div>
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <h4 style="margin: 0; color: ${isCompleted ? '#2ecc71' : '#fff'};">
+                            ${isCompleted ? '✅' : '📜'} ${quest.name}
+                        </h4>
+                    </div>
+                    <p style="font-size: 0.85rem; color: #aaa; margin: 5px 0 10px 0;">${quest.desc}</p>
+                    <div style="font-size: 0.85rem; color: #f39c12;">
+                        ${isCompleted ? '已領取獎勵' : `獎勵：${rewardText}`}
+                    </div>
+                </div>
+            `;
+            
+            list.appendChild(card);
+        });
+    }
+
+    // 5. 加入分頁按鈕
+    const paginationDiv = document.createElement('div');
+    paginationDiv.className = 'pagination-controls';
+    paginationDiv.style.marginTop = '20px';
+    
+    paginationDiv.innerHTML = `
+        <button class="page-btn" onclick="changeQuestStage(-1)" ${currentQuestStage === 1 ? 'disabled' : ''}>◀ 上一章</button>
+        <span class="page-info">第 ${currentQuestStage} / ${maxStage} 章</span>
+        <button class="page-btn" onclick="changeQuestStage(1)" ${currentQuestStage >= maxStage ? 'disabled' : ''}>下一章 ▶</button>
+    `;
+    
+    list.appendChild(paginationDiv);
+}
+
+// 翻頁功能的輔助函數
+function changeQuestStage(direction) {
+    currentQuestStage += direction;
+    renderMainQuests();
+}
 
 function gainExp(amount) {
     const oldLevel = player.level;
@@ -1586,7 +1713,6 @@ function updateUI() {
     if (document.getElementById('achievements').classList.contains('active')) {
         renderAchievements();
     }
-    renderInventory();
     
     const restBtn = document.getElementById('btn-rest');
     if (restBtn && houseData[player.house]) {
@@ -1614,10 +1740,12 @@ function initDailyChallenges() {
 
 // 生成每日挑戰（隨機3個）
 function generateDailyChallenges() {
-    const shuffled = [...dailyChallengePool].sort(() => Math.random() - 0.5);
-    player.daily_challenges = shuffled.slice(0, 3).map(c => c.id);
+    // ★ 改用新的生成函數，直接存入物件陣列
+    player.daily_challenges = generateRandomDailyMissions(player.level);
+    
+    // 重置每日進度
     player.daily_progress = {
-         train_count: 0,
+        train_count: 0,
         work_count: 0,
         fights_won: 0,
         crimes_count: 0,
@@ -1625,18 +1753,13 @@ function generateDailyChallenges() {
         items_bought: 0,
         money_earned: 0,
         money_spent: 0,
-        defeated_tough_enemy: 0,
-        win_streak: 0,
-        crime_fails: 0,
-        train_str: 0,
-        train_spd: 0,
-        level_ups: 0,
-        early_activity: false,
-        late_activity: false
+        enemies_killed: {} // ★ 新增：紀錄殺了哪種敵人
     };
-    player.daily_completed = [];
+    
+    player.daily_completed = []; // 這裡存已完成任務的 id (string)
     player.last_daily_reset = player.day;
-    log("📋 新的每日挑戰已刷新！", "success");
+    
+    log("📋 新的隨機每日任務已派發！", "success");
 }
 
 // 重置每日挑戰
@@ -1655,35 +1778,40 @@ function resetDailyChallenges() {
 
 // 檢查並完成每日挑戰
 function checkDailyChallenges() {
-    if (!player.daily_challenges) return;
+    if (!player.daily_challenges || player.daily_challenges.length === 0) return;
     
-    player.daily_challenges.forEach(challengeId => {
-        // 跳過已完成的
-        if (player.daily_completed.includes(challengeId)) return;
+    player.daily_challenges.forEach(mission => {
+        // 跳過已完成的 (檢查 ID 是否在完成列表中)
+        if (player.daily_completed.includes(mission.id)) return;
         
-        const challenge = dailyChallengePool.find(c => c.id === challengeId);
-        if (!challenge) return;
-        
-        // 檢查是否達成
-        if (challenge.check(player)) {
-            player.daily_completed.push(challengeId);
+        // ★ 呼叫任務物件內建的 check 函數
+        if (mission.check(player, mission)) {
+            player.daily_completed.push(mission.id);
             
             // 給予獎勵
-            if (challenge.reward.money) {
-                const bonus = applyMoneyBoost(challenge.reward.money);
+            let msg = `💰 任務完成：${mission.name}`;
+            
+            if (mission.reward.money) {
+                const bonus = applyMoneyBoost(mission.reward.money);
                 player.money += bonus;
-                log(`💰 每日挑戰完成！獲得 $${bonus}`, "success");
+                msg += ` (+$${bonus})`;
             }
-            if (challenge.reward.exp) {
-                const bonus = applyExpBoost(challenge.reward.exp);
+            if (mission.reward.exp) {
+                const bonus = applyExpBoost(mission.reward.exp);
                 gainExp(bonus);
+                msg += ` (+Exp ${bonus})`;
+            }
+            if (mission.reward.item) {
+                player.inventory[mission.reward.item] = (player.inventory[mission.reward.item] || 0) + 1;
+                msg += ` (獲得 ${itemData[mission.reward.item].name})`;
             }
             
-            showToast(`每日挑戰完成：${challenge.name}`);
-            
-            // 檢查是否全部完成
+            log(msg, "success");
+            showToast(`任務完成：${mission.name}`);
+
+            // 全解獎勵
             if (player.daily_completed.length === player.daily_challenges.length) {
-                log("🎉 今日所有挑戰完成！額外獎勵 +$500", "success");
+                log("🎉 今日全數達成！額外獎勵 +$500", "success");
                 player.money += 500;
             }
         }
@@ -1774,86 +1902,67 @@ function applyExpBoost(amount) {
     }
     return amount;
 }
-// 渲染每日挑戰
+
+// 渲染主線任務
 function renderDailyChallenges() {
     const list = document.getElementById('daily-challenge-list');
     if (!list) return;
-    
     list.innerHTML = '';
     
     if (!player.daily_challenges || player.daily_challenges.length === 0) {
-        list.innerHTML = '<p style="color: #666;">今日挑戰尚未生成</p>';
+        list.innerHTML = '<p style="color: #666;">任務生成中...</p>';
         return;
     }
     
-    player.daily_challenges.forEach(challengeId => {
-        const challenge = dailyChallengePool.find(c => c.id === challengeId);
-        if (!challenge) return;
+    player.daily_challenges.forEach(mission => {
+        const isCompleted = player.daily_completed.includes(mission.id);
         
-        const isCompleted = player.daily_completed.includes(challengeId);
+        // ★ 動態計算當前進度 (Universal Logic)
+        let currentVal = 0;
         
-        const card = document.createElement('div');
-        card.className = 'card';
-        card.style.opacity = isCompleted ? '0.5' : '1';
-        card.style.borderLeft = isCompleted ? '4px solid #2ecc71' : '4px solid #3498db';
-        
-        card.innerHTML = `
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-                <div>
-                    <h4 style="margin: 0;">${isCompleted ? '✅' : '⏳'} ${challenge.name}</h4>
-                    <p style="font-size: 0.85rem; color: #aaa; margin: 5px 0;">${challenge.desc}</p>
-                </div>
-                <div style="text-align: right; font-size: 0.85rem; color: #f39c12;">
-                    💰 $${challenge.reward.money || 0}<br>
-                    ⭐ ${challenge.reward.exp || 0} EXP
-                </div>
-            </div>
-        `;
-        
-        list.appendChild(card);
-    });
-}
+        // 根據不同類型去不同地方抓數值
+        if (mission.type === 'hunt_specific') {
+            currentVal = player.daily_progress.enemies_killed?.[mission.targetId] || 0;
+        } else if (mission.type === 'crime_specific') {
+            currentVal = player.daily_progress.crimes_specific?.[mission.targetId] || 0;
+        } else if (mission.type === 'consume_specific') {
+            currentVal = player.daily_progress.items_consumed?.[mission.targetId] || 0;
+        } else if (mission.type === 'earn') {
+            currentVal = player.daily_progress.money_earned || 0;
+        } else if (mission.type === 'train_stat') {
+            const key = mission.targetStat === 'strength' ? 'train_str' : 'train_spd';
+            currentVal = player.daily_progress[key] || 0;
+        }
 
-// 渲染主線任務
-function renderMainQuests() {
-    const list = document.getElementById('main-quest-list');
-    if (!list) return;
-    
-    list.innerHTML = '';
-    
-    // 只顯示未完成的任務（按階段排序）
-    const unfinished = mainQuests.filter(q => 
-        !player.main_quests_completed.includes(q.id)
-    ).sort((a, b) => a.stage - b.stage);
-    
-    if (unfinished.length === 0) {
-        list.innerHTML = '<p style="color: #2ecc71;">🎉 所有主線任務已完成！</p>';
-        return;
-    }
-    
-    unfinished.forEach(quest => {
+        // 視覺修正：進度不超過目標
+        const displayVal = Math.min(currentVal, mission.targetVal);
+        
         const card = document.createElement('div');
         card.className = 'card';
-        card.style.borderLeft = `4px solid ${quest.stage === 1 ? '#3498db' : quest.stage === 2 ? '#9b59b6' : '#e74c3c'}`;
-        
-        let rewardText = '';
-        if (quest.reward.money) rewardText += `💰 $${quest.reward.money} `;
-        if (quest.reward.exp) rewardText += `⭐ ${quest.reward.exp} EXP `;
-        if (quest.reward.item) rewardText += `🎁 ${itemData[quest.reward.item]?.name || '物品'}`;
+        // 樣式微調：去掉標題後的樣式
+        card.style.borderLeft = isCompleted ? '4px solid #2ecc71' : '4px solid #9b59b6'; // 紫色代表隨機任務
+        card.style.opacity = isCompleted ? '0.6' : '1';
+
+        // 獎勵文字
+        let rewards = [];
+        if(mission.reward.money) rewards.push(`$${mission.reward.money}`);
+        if(mission.reward.exp) rewards.push(`${mission.reward.exp} XP`);
         
         card.innerHTML = `
-            <div>
-                <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <h4 style="margin: 0;">📜 ${quest.name}</h4>
-                    <span style="font-size: 0.8rem; color: #888;">階段 ${quest.stage}</span>
-                </div>
-                <p style="font-size: 0.85rem; color: #aaa; margin: 5px 0 10px 0;">${quest.desc}</p>
-                <div style="font-size: 0.85rem; color: #f39c12;">
-                    獎勵：${rewardText}
-                </div>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+                <h4 style="margin: 0; font-size: 1rem;">${isCompleted?'✅':''} ${mission.name}</h4>
+                <span style="font-size: 0.8rem; color: #f1c40f;">${rewards.join(' + ')}</span>
+            </div>
+            
+            <div style="display: flex; justify-content: space-between; font-size: 0.85rem; color: #aaa;">
+                <span>${mission.desc}</span>
+                <span style="color: #fff;">${displayVal} / ${mission.targetVal}</span>
+            </div>
+
+            <div style="width: 100%; height: 4px; background: #333; margin-top: 8px; border-radius: 2px;">
+                <div style="height: 100%; width: ${(displayVal/mission.targetVal)*100}%; background: ${isCompleted?'#2ecc71':'#3498db'}; transition: width 0.3s;"></div>
             </div>
         `;
-        
         list.appendChild(card);
     });
 }
@@ -1896,6 +2005,319 @@ function renderAchShop() {
         list.appendChild(card);
     });
 }
+// game.js
 
+let selectedItemId = null; // 當前選中的物品 ID
+let selectedIsNew = false; // 當前選中的是否為新品
+
+function openInventory() {
+    const modal = document.getElementById('inventory-modal');
+    if (modal) {
+        modal.style.display = 'flex';
+        renderGridInventory();
+        // 重置右側詳情
+        document.getElementById('inv-selected-info').style.display = 'none';
+        document.getElementById('inv-empty-msg').style.display = 'block';
+    }
+}
+
+function closeInventory() {
+    const modal = document.getElementById('inventory-modal');
+    if (modal) modal.style.display = 'none';
+}
+
+function renderGridInventory() {
+    const grid = document.getElementById('inv-grid');
+    if (!grid) return;
+    grid.innerHTML = '';
+
+    // 1. 整理所有物品 (展開堆疊)
+    // 我們要讓 5 個磚頭變成 5 個格子
+    
+    // 先處理裝備中的 (放在最前面)
+    const equippedItems = [];
+    if (player.weapon) equippedItems.push({ id: player.weapon, type: 'equipped', slot: 'weapon' });
+    if (player.armor) equippedItems.push({ id: player.armor, type: 'equipped', slot: 'armor' });
+    if (player.accessory) equippedItems.push({ id: player.accessory, type: 'equipped', slot: 'accessory' });
+
+    equippedItems.forEach(obj => createSlot(obj.id, true, false));
+
+    // 再處理背包裡的
+    Object.keys(player.inventory).forEach(itemId => {
+        let count = player.inventory[itemId];
+        let newCount = (player.new_stock && player.new_stock[itemId]) ? player.new_stock[itemId] : 0;
+        let usedCount = Math.max(0, count - newCount);
+
+        // 先畫全新的
+        for (let i = 0; i < newCount; i++) {
+            createSlot(itemId, false, true);
+        }
+        // 再畫二手的
+        for (let i = 0; i < usedCount; i++) {
+            createSlot(itemId, false, false);
+        }
+    });
+}
+
+// 建立單個格子
+function createSlot(itemId, isEquipped, isNew) {
+    const item = itemData[itemId];
+    if (!item) return;
+
+    const grid = document.getElementById('inv-grid');
+    const slot = document.createElement('div');
+    slot.className = 'inv-slot';
+    
+    // 根據物品類型給予不同 Emoji (簡單分類)
+    let icon = '📦';
+    if (item.type === 'weapon') icon = '⚔️';
+    else if (item.type === 'armor') icon = '🛡️';
+    else if (item.type === 'accessory') icon = '💍';
+    else if (item.category === 'food') icon = '🍗';
+    else if (item.category === 'medical') icon = '💊';
+    
+    slot.innerHTML = icon;
+    
+    // 樣式標記
+    if (isNew) slot.classList.add('is-new');
+    if (isEquipped) slot.classList.add('is-equipped');
+
+    // 點擊事件
+    slot.onclick = () => {
+        // 移除其他格子的 active 樣式
+        document.querySelectorAll('.inv-slot').forEach(s => s.classList.remove('active'));
+        slot.classList.add('active');
+        
+        showItemDetails(itemId, isEquipped, isNew);
+    };
+
+    grid.appendChild(slot);
+}
+
+// 顯示右側詳情
+function showItemDetails(itemId, isEquipped, isNew) {
+    const item = itemData[itemId];
+    if (!item) return;
+
+    // 更新全域變數 (給按鈕操作用)
+    selectedItemId = itemId;
+    selectedIsNew = isNew;
+
+    document.getElementById('inv-empty-msg').style.display = 'none';
+    const infoPanel = document.getElementById('inv-selected-info');
+    infoPanel.style.display = 'block';
+
+    document.getElementById('sel-name').innerText = item.name;
+    document.getElementById('sel-desc').innerText = item.desc;
+
+    // 標籤顯示
+    const tagsDiv = document.getElementById('sel-tags');
+    tagsDiv.innerHTML = '';
+    
+    if (isNew) tagsDiv.innerHTML += `<span class="inv-tag new">✨ 全新</span>`;
+    if (isEquipped) tagsDiv.innerHTML += `<span class="inv-tag equipped">🔴 已裝備</span>`;
+    else if (!isNew && (item.type==='weapon' || item.type==='armor')) tagsDiv.innerHTML += `<span class="inv-tag">⚠️ 二手</span>`;
+
+    const typeName = {weapon:'武器', armor:'防具', accessory:'飾品', food:'食物', medical:'藥品'}[item.category] || '物品';
+    tagsDiv.innerHTML += `<span class="inv-tag">${typeName}</span>`;
+
+    // 按鈕設定
+    const btnEquip = document.getElementById('btn-equip');
+    const btnSell = document.getElementById('btn-sell');
+
+    // 1. 裝備/使用按鈕
+    btnEquip.style.display = 'block';
+    if (isEquipped) {
+        btnEquip.style.display = 'none'; // 已裝備不能再點
+    } else if (item.type === 'weapon' || item.type === 'armor' || item.type === 'accessory') {
+        btnEquip.innerText = "⚔️ 裝備";
+        btnEquip.onclick = () => { equipItemFromGrid(itemId, isNew); };
+    } else if (item.type === 'sellable') {
+        btnEquip.style.display = 'none'; // 純賣品
+    } else {
+        btnEquip.innerText = "✨ 使用";
+        btnEquip.onclick = () => { useItem(itemId); openInventory(); }; // 使用後重整背包
+    }
+
+    // 2. 販賣按鈕
+    const oldBulkBtn = document.getElementById('btn-sell-all');
+    if(oldBulkBtn) oldBulkBtn.remove();
+
+    btnSell.style.display = 'block';
+
+    if (isEquipped) {
+        btnSell.style.display = 'none'; // 裝備中不能賣
+    } else if (item.sell_price > 0) {
+        // 預估價格
+        let estimatedPrice = item.sell_price;
+        if (item.type === 'weapon' || item.type === 'armor') {
+            if (isNew) estimatedPrice = Math.floor(item.sell_price * 1.5);
+            else estimatedPrice = "浮動";
+        }
+        btnSell.innerText = `💰 販賣 (${estimatedPrice === "浮動" ? "二手估價" : "$"+estimatedPrice})`;
+        btnSell.onclick = () => { sellItemFromGrid(itemId, isNew); };
+        const totalCount = player.inventory[itemId];
+        
+        if (totalCount > 1) {
+            const bulkBtn = document.createElement('button');
+            bulkBtn.id = 'btn-sell-all';
+            bulkBtn.className = 'action-btn';
+            bulkBtn.style.width = '100%';
+            bulkBtn.style.marginTop = '5px';
+            bulkBtn.style.background = '#d35400'; // 深橘色
+            bulkBtn.innerText = `🔥 全部賣掉 (x${totalCount})`;
+            
+            bulkBtn.onclick = () => {
+                sellAllSpecificStack(itemId);
+            };
+            
+            // 插在單個販賣按鈕後面
+            btnSell.parentNode.appendChild(bulkBtn);
+        }
+    } else {
+        btnSell.style.display = 'none';
+    };
+    
+}
+
+// 專門給格子用的裝備函數 (為了處理新品庫存扣除邏輯)
+function equipItemFromGrid(itemId, isNew) {
+    // 這裡我們稍微 hack 一下，呼叫原本的 equipItem
+    // 但因為原本的 logic 會自動優先扣新品，這符合我們的期望
+    // 如果玩家點選的是「二手格子」，我們希望他裝備二手的
+    
+    // 如果玩家點選「二手」但包包裡有「全新」，原本的 equipItem 會強制裝備全新的
+    // 為了解決這個，我們可以暫時把 new_stock 藏起來 (這有點複雜)
+    
+    // 簡單解法：直接呼叫原本的 equipItem，系統邏輯是「優先用最好的」
+    // 我們在 UI 上雖然分開了，但實際裝備行為讓系統自動判斷即可
+    // 或者你可以提示玩家「系統將自動選擇狀況最好的裝備」
+    
+    equipItem(itemId);
+    openInventory(); // 重整畫面
+}
+
+// 專門給格子用的販賣函數
+function sellItemFromGrid(itemId, isNew) {
+    const item = itemData[itemId];
+    
+    // 這裡需要修改原本的 sellItem 邏輯來支援「指定賣全新」或「指定賣舊貨」
+    // 但為了不改壞原本的，我們用一個取巧的方法：
+    
+    // 如果玩家想賣「全新」的
+    if (isNew) {
+        // 我們手動執行賣全新的邏輯
+         const finalPrice = Math.floor(item.sell_price * 1.5);
+         player.money += finalPrice;
+         player.inventory[itemId]--;
+         player.new_stock[itemId]--; // 扣除新品
+         if (player.inventory[itemId] <= 0) delete player.inventory[itemId];
+         log(`你特地挑了全新的 ${item.name} 賣給老闆，獲得 $${finalPrice}`, "success");
+    } 
+    // 如果玩家想賣「二手」的
+    else {
+        // 手動執行賣舊貨邏輯
+        const quality = 0.2 + Math.random() * 0.6;
+        const finalPrice = Math.floor(item.sell_price * quality) || 1;
+        player.money += finalPrice;
+        player.inventory[itemId]--;
+        // 不扣 new_stock
+        if (player.inventory[itemId] <= 0) delete player.inventory[itemId];
+        log(`你清掉了舊的 ${item.name}，獲得 $${finalPrice}`, "success");
+    }
+    
+    updateUI();
+    openInventory(); // 重整畫面
+}
+function sellAllJunk() {
+    let totalMoney = 0;
+    let soldCount = 0;
+    let soldItemsNames = [];
+
+    // 遍歷背包所有物品
+    Object.keys(player.inventory).forEach(itemId => {
+        const item = itemData[itemId];
+        if (!item) return;
+
+        // ★ 只賣「戰利品 (loot)」分類，避免誤賣裝備或藥水
+        if (item.category === 'loot') {
+            const count = player.inventory[itemId];
+            const newCount = (player.new_stock && player.new_stock[itemId]) ? player.new_stock[itemId] : 0;
+            const usedCount = Math.max(0, count - newCount);
+            
+            let itemTotal = 0;
+
+            // 1. 計算舊貨價值 (隨機浮動，這裡取平均值簡化計算，或你可以跑迴圈隨機)
+            // 為了方便，批量販售時舊貨我們固定算 0.5 倍價格 (平均值)
+            if (usedCount > 0) {
+                itemTotal += Math.floor(item.sell_price * 0.5 * usedCount);
+            }
+
+            // 2. 計算新品價值 (1.5倍)
+            if (newCount > 0) {
+                itemTotal += Math.floor(item.sell_price * 1.5 * newCount);
+                // 扣除新品庫存
+                player.new_stock[itemId] = 0;
+            }
+
+            // 結算
+            totalMoney += itemTotal;
+            soldCount += count;
+            soldItemsNames.push(item.name);
+            
+            // 從背包移除
+            delete player.inventory[itemId];
+        }
+    });
+
+    if (soldCount > 0) {
+        player.money += totalMoney;
+        log(`💰 批量販售：賣掉了 ${soldCount} 件戰利品 (${soldItemsNames[0]} 等...)，共獲得 $${totalMoney}`, "success");
+        updateUI();
+        renderGridInventory(); // 重整背包畫面
+        
+        // 切換回空狀態顯示
+        document.getElementById('inv-selected-info').style.display = 'none';
+        document.getElementById('inv-empty-msg').style.display = 'block';
+    } else {
+        log("背包裡沒有可以販售的戰利品雜物！", "normal");
+    }
+}
+// 販賣特定物品的所有庫存
+function sellAllSpecificStack(itemId) {
+    const item = itemData[itemId];
+    const totalCount = player.inventory[itemId];
+    if (!totalCount || totalCount <= 0) return;
+
+    // 計算新品與舊品數量
+    const newCount = (player.new_stock && player.new_stock[itemId]) ? player.new_stock[itemId] : 0;
+    const usedCount = Math.max(0, totalCount - newCount);
+    
+    let totalMoney = 0;
+
+    // 1. 賣舊品 (算平均價 0.5 或隨機)
+    if (usedCount > 0) {
+        // 為了讓玩家覺得賺，如果是武器防具，舊貨我們給它浮動總和
+        // 這裡簡化：舊貨全部以 0.4 ~ 0.6 的浮動區間計價
+        for(let i=0; i<usedCount; i++) {
+            const quality = 0.3 + Math.random() * 0.7;
+            totalMoney += Math.floor(item.sell_price * quality);
+        }
+    }
+
+    // 2. 賣新品 (1.5倍)
+    if (newCount > 0) {
+        totalMoney += Math.floor(item.sell_price * 1.5 * newCount);
+        player.new_stock[itemId] = 0; // 清空新品庫存
+    }
+
+    // 執行
+    player.money += totalMoney;
+    delete player.inventory[itemId]; // 清空背包該物品
+
+    log(`清倉大拍賣！賣掉了 ${totalCount} 個 ${item.name}，獲得 $${totalMoney}`, "success");
+    updateUI();
+    openInventory(); // 重整畫面
+}
 // 啟動遊戲
 initGame();
