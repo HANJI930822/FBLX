@@ -6,9 +6,15 @@ let playerFrameIndex = 0;
 let playerAnimInterval = null;
 let enemyAnimInterval = null;
 
+// 戰鬥狀態旗標
+let isFighting = false;
+
+// 分頁變數
 const SHOP_PAGE_SIZE = 4; 
 let shopPage = 1;        
 let shopCategory = 'all'; 
+const ACH_PAGE_SIZE = 6; 
+let achPage = 1;
 
 // --- 初始化流程 ---
 function initGame() {
@@ -22,7 +28,7 @@ function initGame() {
             if (!player.job || !jobData[player.job]) { forceReset(); return; }
             if (player.hp <= 0) { forceReset(); return; }
 
-            // 補全可能缺少的屬性
+            // 補全屬性
             if (!player.house) player.house = 'shack';
             if (!player.completed_courses) player.completed_courses = [];
             if(!player.inventory) player.inventory = {};
@@ -38,6 +44,11 @@ function initGame() {
                    player.stats = { fights_won:0, crimes_success:0, times_worked:0, items_bought:0, money_earned:0, food_eaten:0, days_lived:0 };
              }
             if (!player.achievements) player.achievements = [];
+            
+            // 修正 NaN
+            if (isNaN(player.energy)) player.energy = 100;
+            if (isNaN(player.hp)) player.hp = 100;
+
             document.getElementById('intro-screen').style.display = 'none';
             document.getElementById('app-container').style.display = 'flex';
             
@@ -52,169 +63,7 @@ function initGame() {
         renderIntroJobs();
     }
 }
-//選單
-function toggleMenu() {
-    const sidebar = document.getElementById('sidebar');
-    // 切換 active class
-    sidebar.classList.toggle('active');
-}
-//成就
-const ACH_PAGE_SIZE = 6; // 每頁顯示 6 個成就
-let achPage = 1;
-function checkAchievements() {
-    let newUnlock = false;
 
-    achievementList.forEach(ach => {
-        // 如果還沒解鎖，且符合條件
-        if (!player.achievements.includes(ach.id) && ach.check(player)) {
-            player.achievements.push(ach.id);
-            showToast(ach.name); // 跳出通知
-            log(`🏆 成就解鎖：${ach.name} - ${ach.desc}`, "success");
-            newUnlock = true;
-        }
-    });
-
-    // 如果有新成就，且目前正在看成就面板，就刷新列表
-    if (newUnlock && document.getElementById('achievements').classList.contains('active')) {
-        renderAchievements();
-    }
-}
-
-// 顯示成就通知動畫
-function showToast(achName) {
-    const toast = document.getElementById('achievement-toast');
-    const msg = document.getElementById('toast-msg');
-    msg.innerText = achName;
-    toast.classList.add('show');
-    
-    // 3秒後縮回去
-    setTimeout(() => {
-        toast.classList.remove('show');
-    }, 3000);
-}
-
-// 渲染成就面板
-function renderAchievements() {
-    const list = document.getElementById('achievement-list');
-    if (!list) return;
-    list.innerHTML = '';
-
-    // 1. 計算總體進度 (這部分顯示全部，不分頁)
-    const count = player.achievements.length;
-    const total = achievementList.length;
-    // 使用 ?. 防呆，避免元素還沒載入時報錯
-    if(document.getElementById('achievement-progress')) {
-        document.getElementById('achievement-progress').innerText = `${count} / ${total}`;
-        document.getElementById('achievement-bar').style.width = `${(count/total)*100}%`;
-    }
-
-    // 2. 計算分頁
-    const totalPages = Math.ceil(total / ACH_PAGE_SIZE);
-    
-    // 防呆：頁碼修正
-    if (achPage > totalPages && totalPages > 0) achPage = totalPages;
-    if (achPage < 1) achPage = 1;
-
-    // 3. 切割陣列 (只取當前頁面的成就)
-    const startIndex = (achPage - 1) * ACH_PAGE_SIZE;
-    const endIndex = startIndex + ACH_PAGE_SIZE;
-    const itemsToShow = achievementList.slice(startIndex, endIndex);
-
-    // 4. 渲染卡片
-    itemsToShow.forEach(ach => {
-        const isUnlocked = player.achievements.includes(ach.id);
-        const card = document.createElement('div');
-        card.className = `ach-card ${isUnlocked ? 'unlocked' : ''}`;
-        card.innerHTML = `
-            <h4>
-                ${ach.name} 
-                <span>${isUnlocked ? '✅' : '🔒'}</span>
-            </h4>
-            <p>${ach.desc}</p>
-        `;
-        list.appendChild(card);
-    });
-
-    // 5. 渲染分頁按鈕 (動態生成)
-    let paginationDiv = document.getElementById('ach-pagination');
-    if (!paginationDiv) {
-        paginationDiv = document.createElement('div');
-        paginationDiv.id = 'ach-pagination';
-        paginationDiv.className = 'pagination-controls';
-        // 插在 achievement-list 的後面 (panel-body 底部)
-        list.parentNode.appendChild(paginationDiv);
-    }
-
-    if (totalPages <= 1) {
-        paginationDiv.style.display = 'none';
-    } else {
-        paginationDiv.style.display = 'flex';
-        paginationDiv.innerHTML = `
-            <button class="page-btn" onclick="changeAchPage(-1)" ${achPage === 1 ? 'disabled' : ''}>◀</button>
-            <span class="page-info">${achPage} / ${totalPages}</span>
-            <button class="page-btn" onclick="changeAchPage(1)" ${achPage === totalPages ? 'disabled' : ''}>▶</button>
-        `;
-    }
-}
-function changeAchPage(direction) {
-    achPage += direction;
-    renderAchievements(); 
-}
-function passTime(hours) {
-    player.time += hours;
-    
-    // 檢查是否換日
-    if (player.time >= 24) {
-        player.time -= 24;
-        player.day += 1;
-        
-        // ★ 修改：套用房屋的消耗倍率
-        // 取得目前房屋資料 (如果找不到就預設為破屋)
-        const currentHouse = houseData[player.house] || houseData['shack'];
-        const mult = currentHouse.decayMult || 1.0;
-
-        // 計算實際消耗量
-        const hungerLoss = Math.floor(gameConfig.dailyHungerDecay * mult);
-        const thirstLoss = Math.floor(gameConfig.dailyThirstDecay * mult);
-
-        player.hunger -= hungerLoss;
-        player.thirst -= thirstLoss;
-        
-        log(`=== 第 ${player.day} 天開始 ===`, "normal");
-        // 顯示稍微詳細一點的訊息，讓玩家知道住好房子的差別
-        log(`過了一夜，飢餓 -${hungerLoss}，口渴 -${thirstLoss} (居住加成: ${mult}x)`, "fail");
-
-        checkSurvivalStatus();
-    }
-    
-    // 每次行動都扣一點點 (模擬代謝)
-    player.hunger = Math.max(0, player.hunger - (hours * 2));
-    player.thirst = Math.max(0, player.thirst - (hours * 3));
-    
-    updateUI();
-}
-function checkSurvivalStatus() {
-    let penaltyMsg = "";
-    
-    if (player.hunger <= 0) {
-        player.hunger = 0;
-        player.hp -= 30; // 餓死扣血
-        penaltyMsg += "你餓到頭昏眼花 (HP -30)! ";
-    }
-    if (player.thirst <= 0) {
-        player.thirst = 0;
-        player.hp -= 30; // 渴死扣血
-        penaltyMsg += "你脫水了 (HP -30)! ";
-    }
-    
-    if (penaltyMsg) {
-        log(penaltyMsg, "fail");
-        if (player.hp <= 0) {
-            log("你死於飢餓或脫水...", "log-die");
-            gameOver();
-        }
-    }
-}
 function forceReset() {
     localStorage.removeItem('myTornGame');
     player = { ...defaultPlayerState }; 
@@ -248,14 +97,337 @@ function resetGame() {
     }
 }
 
-function gameOver() {
+function gameOver(reason) {
     localStorage.removeItem('myTornGame');
     player.hp = 0;
-    alert("【💀 你已經死亡】\n\n請重新選擇身分，再來一次吧。");
+    isFighting = false;
+    
+    let msg = "【💀 你已經死亡】\n\n";
+    if (reason === "starvation") {
+        msg += "死因：活活餓死。\n你在飢餓狀態下撐了 7 天，但身體終究到了極限。";
+    } else if (reason === "dehydration") {
+        msg += "死因：嚴重脫水。\n沒有水，人類只能撐 3 天。你倒在了尋找水源的路上。";
+    } else {
+        msg += "死因：街頭鬥爭。\n下次出門前記得帶把槍。";
+    }
+    
+    alert(msg);
     location.reload();
 }
+// --- 戰鬥系統 ---
 
-// --- 開場職業選擇 ---
+function startCombat(enemyId) {
+    if (player.hp <= 0) { log("重傷無法戰鬥！", "fail"); return; }
+    if (player.energy < 5) { log("體力不足！", "fail"); return; }
+
+    player.energy -= 5;
+    updateUI();
+
+    document.getElementById('enemy-selection').style.display = 'none';
+    document.getElementById('combat-screen').style.display = 'block';
+    
+    const enemy = enemyData[enemyId];
+    document.getElementById('enemy-name').innerText = enemy.name;
+    document.getElementById('battle-log').innerHTML = '';
+
+    isFighting = true;
+    simulateFight(enemy);
+}
+
+function endCombat() {
+    isFighting = false;
+    document.getElementById('enemy-selection').style.display = 'block';
+    document.getElementById('combat-screen').style.display = 'none';
+    log("你逃離了戰鬥。", "normal");
+}
+
+async function simulateFight(originalEnemy) {
+    let enemyHp = originalEnemy.hp;
+    const battleLog = document.getElementById('battle-log');
+    
+    const addLog = (msg, style) => {
+        const div = document.createElement('div');
+        div.className = `log-line ${style}`;
+        div.innerText = msg;
+        battleLog.appendChild(div);
+        battleLog.scrollTop = battleLog.scrollHeight;
+    };
+
+    const wait = (ms) => new Promise(r => setTimeout(r, ms));
+
+    addLog(`=== 遭遇 ${originalEnemy.name} (HP: ${enemyHp}) ===`, "normal");
+
+    while (enemyHp > 0 && player.hp > 0 && isFighting) {
+        
+        await wait(600);
+        if (!isFighting) return;
+
+        // 玩家回合
+        let totalAtk = getPlayerAttack();
+        let dmg = Math.floor(totalAtk * (0.8 + Math.random() * 0.4));
+        let hitChance = 0.8 + (player.speed - originalEnemy.spd) * 0.01;
+        
+        if (Math.random() > hitChance) dmg = 0; 
+
+        if (dmg > 0) {
+            enemyHp -= dmg;
+            addLog(`> 你造成 ${dmg} 點傷害！ (敵剩: ${Math.max(0, enemyHp)})`, "log-player");
+        } else {
+            addLog(`> 你的攻擊揮空了！`, "log-enemy");
+        }
+
+        if (enemyHp <= 0) break;
+        
+        await wait(400);
+        if (!isFighting) return;
+
+        // 敵人回合
+        let totalDef = getPlayerDefense();
+        let enemyDmg = Math.floor(originalEnemy.str * (0.8 + Math.random() * 0.4));
+        enemyDmg = Math.max(1, Math.floor(enemyDmg - (totalDef * 0.5)));
+        let dodgeChance = 0.1 + (player.speed - originalEnemy.spd) * 0.01;
+        
+        if (Math.random() < dodgeChance) {
+            addLog(`> 你閃過了 ${originalEnemy.name} 的攻擊！`, "log-player");
+        } else {
+            player.hp = Math.max(0, player.hp - enemyDmg);
+            addLog(`> ${originalEnemy.name} 造成 ${enemyDmg} 點傷害。`, "log-enemy");
+            updateUI(); 
+        }
+    }
+
+    if (!isFighting) return;
+
+    await wait(500);
+    
+    const timeCost = originalEnemy.time || 1;
+    passTime(timeCost);
+
+    if (player.hp > 0) {
+        player.money += originalEnemy.reward;
+        player.stats.fights_won++;
+        let expGain = originalEnemy.exp || 10;
+        
+        addLog(`=== 勝利 ===`, "log-win");
+        addLog(`獲得: $${originalEnemy.reward}, Exp +${expGain}`, "log-win");
+        addLog(`戰鬥耗時 ${timeCost} 小時。`, "normal");
+        
+        gainExp(expGain);
+        updateUI();
+
+        if (originalEnemy === enemyData['boss']) {
+             if (!player.achievements.includes('kill_boss')) {
+                 player.achievements.push('kill_boss');
+                 showToast('新秩序');
+                 log(`🏆 成就解鎖：新秩序`, "success");
+             }
+        }
+        checkAchievements();
+
+    } else {
+        addLog(`=== 死亡 ===`, "log-die");
+        addLog(`你被擊殺了...`, "log-die");
+        await wait(1000); 
+        gameOver();
+    }
+    
+    isFighting = false;
+}
+
+// --- 核心與時間 ---
+
+function gameTick() {
+    const now = Date.now();
+    const timeLeft = Math.ceil((gameConfig.restCooldown - (now - player.last_rest)) / 1000);
+    const restTimer = document.getElementById('rest-timer');
+    
+}
+
+function passTime(hours) {
+    player.time += hours;
+    
+    if (player.time >= 24) {
+        player.time -= 24;
+        player.day += 1;
+        
+        const currentHouse = houseData[player.house] || houseData['shack'];
+        const mult = currentHouse.decayMult || 1.0;
+
+        const hungerLoss = Math.floor(gameConfig.dailyHungerDecay * mult);
+        const thirstLoss = Math.floor(gameConfig.dailyThirstDecay * mult);
+
+        player.hunger -= hungerLoss;
+        player.thirst -= thirstLoss;
+        
+        log(`=== 第 ${player.day} 天開始 ===`, "normal");
+        log(`過了一夜，飢餓 -${hungerLoss}，口渴 -${thirstLoss}`, "fail");
+
+        checkSurvivalStatus();
+    }
+    
+    player.hunger = Math.max(0, player.hunger - (hours * 2));
+    player.thirst = Math.max(0, player.thirst - (hours * 3));
+    
+    checkSurvivalStatus(hours);
+
+    updateUI();
+}
+
+function checkSurvivalStatus(hoursPassed) {
+    // --- A. 飢餓檢查 ---
+    if (player.hunger <= 0) {
+        player.hunger = 0;
+        player.starvation_hours += hoursPassed;
+        
+        // 瀕死警告 (每過一段時間提醒一次)
+        let left = gameConfig.starvationLimit - player.starvation_hours;
+        if (left <= 24 || player.starvation_hours % 12 === 0) {
+            log(`☠️ 極度飢餓！若不進食，將在 ${left} 小時後死亡！`, "log-die");
+        }
+    } else {
+        // 如果有吃東西，計時器歸零 (或是你可以設計成慢慢恢復)
+        player.starvation_hours = 0;
+        
+        // 低數值警告
+        if (player.hunger <= 20) {
+            log("⚠️ 肚子非常餓 (低於 20)，請盡快進食！", "fail");
+        }
+    }
+
+    // --- B. 口渴檢查 ---
+    if (player.thirst <= 0) {
+        player.thirst = 0;
+        player.dehydration_hours += hoursPassed;
+        
+        let left = gameConfig.dehydrationLimit - player.dehydration_hours;
+        if (left <= 12 || player.dehydration_hours % 6 === 0) {
+            log(`☠️ 極度脫水！若不喝水，將在 ${left} 小時後死亡！`, "log-die");
+        }
+    } else {
+        player.dehydration_hours = 0;
+        
+        if (player.thirst <= 20) {
+            log("⚠️ 喉嚨像火燒一樣 (低於 20)，快找水喝！", "fail");
+        }
+    }
+
+    // --- C. 死亡執行 ---
+    if (player.starvation_hours >= gameConfig.starvationLimit) {
+        gameOver("starvation");
+    }
+    else if (player.dehydration_hours >= gameConfig.dehydrationLimit) {
+        gameOver("dehydration");
+    }
+}
+
+function renderJobs() {
+    const job = jobData[player.job];
+    if (job) {
+        document.getElementById('current-job-name').innerText = job.name;
+        document.getElementById('current-job-desc').innerText = job.desc;
+        document.getElementById('current-job-salary').innerText = `$${job.salary}`;
+        document.getElementById('job-title').innerText = `(${job.name})`;
+    }
+}
+
+function work() {
+    const job = jobData[player.job];
+    if (!job) return; 
+
+    if (player.energy < gameConfig.workCost) { log("體力不足！", "fail"); return; }
+    
+    player.energy -= gameConfig.workCost;
+    player.money += job.salary;
+    player.stats.times_worked++; 
+    checkAchievements(); 
+    
+    log(`打卡上班... (經過 ${gameConfig.workTime} 小時)`, "normal");
+    passTime(gameConfig.workTime);
+    
+    gainExp(2); 
+    log(`工作完成！獲得薪水 $${job.salary}`, "success");
+    updateUI();
+}
+
+function train(stat) {
+    if (player.hp <= 0) { log("在醫院無法訓練！", "fail"); return; }
+    
+    if (player.energy >= gameConfig.trainCost) {
+        player.energy -= gameConfig.trainCost;
+        let gain = 1 + Math.floor(player[stat] * 0.01); 
+        player[stat] += gain;
+        
+        passTime(gameConfig.trainTime);
+        
+        log(`訓練結束 (+${gain} ${stat})`, "success");
+        updateUI();
+    } else { log("體力不足！", "fail"); }
+}
+
+function commitCrime(crimeId) {
+    if (player.hp <= 0) { log("在醫院無法犯罪！", "fail"); return; } 
+
+    const crime = crimeData[crimeId];
+    const timeCost = crime.time || 1;
+    
+    if (player.energy >= crime.cost) { 
+        player.energy -= crime.cost; 
+        
+        passTime(timeCost);
+
+        if (Math.random() < crime.successRate) {
+            player.money += crime.reward;
+            player.stats.crimes_success++;
+            gainExp(1);
+            log(`犯罪成功：${crime.name} (+$${crime.reward})`, "success");
+            
+            if (crimeId === 'rob_granny' && !player.achievements.includes('master_thief')) {
+                 player.achievements.push('master_thief');
+                 showToast('神偷');
+                 log(`🏆 成就解鎖：神偷`, "success");
+            }
+        } else { 
+            log(`犯罪失敗：${crime.failMsg}`, "fail"); 
+        }
+        
+        checkAchievements();
+        updateUI();
+    } else { 
+        log("體力不足！", "fail"); 
+    }
+}
+
+// --- 其他功能 ---
+
+function rest() {
+    // 1. 取得玩家輸入的小時數
+    const input = document.getElementById('rest-hours');
+    let hours = parseInt(input.value);
+
+    // 防呆：確保至少睡 1 小時，且不能輸入奇怪的數字
+    if (isNaN(hours) || hours < 1) hours = 1;
+    // 上限 24 小時 (避免一次睡太久直接餓死)
+    if (hours > 24) hours = 24; 
+
+    // 2. 取得房屋每小時回復量
+    const house = houseData[player.house];
+    const restorePerHr = house.restore; 
+
+    // 3. 計算總回復量
+    const totalRestore = restorePerHr * hours;
+
+    // 4. 消耗時間 (這會觸發飢餓/口渴扣除)
+    passTime(hours); 
+
+    // 5. 執行回復
+    player.hp = Math.min(player.max_hp, player.hp + totalRestore);
+    player.energy = Math.min(player.max_energy, player.energy + totalRestore);
+    
+    // 顯示結果
+    log(`你睡了 ${hours} 小時。 (HP+${totalRestore}, 體力+${totalRestore})`, "success");
+    updateUI();
+}
+
 function renderIntroJobs() {
     const intro = document.getElementById('intro-screen');
     const app = document.getElementById('app-container');
@@ -264,7 +436,6 @@ function renderIntroJobs() {
     
     const list = document.getElementById('intro-job-list');
     if (!list) return;
-
     list.innerHTML = '';
     
     for (const [id, job] of Object.entries(jobData)) {
@@ -308,11 +479,9 @@ function chooseStartJob(jobId) {
     startGameLoop();
 }
 
-// --- 渲染敵人 ---
 function renderEnemies() {
   const list = document.getElementById("enemy-list");
   if (!list) return;
-  
   list.innerHTML = "";
   for (const [id, enemy] of Object.entries(enemyData)) {
     const card = document.createElement("div");
@@ -332,7 +501,6 @@ function renderEnemies() {
   }
 }
 
-// --- 商店系統 ---
 function renderShop(category) {
     if (category && category !== shopCategory) {
         shopCategory = category;
@@ -418,7 +586,6 @@ function buyItem(itemId) {
     } else { log("金錢不足！", "fail"); }
 }
 
-// --- 背包與裝備 ---
 function renderInventory() {
     const invList = document.getElementById('inventory-list');
     if (!invList) return;
@@ -503,7 +670,6 @@ function useItem(itemId) {
     
     if (!player.inventory[itemId] || player.inventory[itemId] <= 0) return;
     
-    // 執行效果
     let msg = "";
     if (item.type === 'hp') { 
         player.hp = Math.min(player.max_hp, player.hp + item.value);
@@ -513,18 +679,17 @@ function useItem(itemId) {
         player.energy = Math.min(player.max_energy, player.energy + item.value);
         msg = "回復體力";
     }
-    else if (item.type === 'hunger') { // ★ 新增
+    else if (item.type === 'hunger') {
         player.hunger = Math.min(player.max_hunger, player.hunger + item.value);
         msg = "填飽肚子";
     }
-    else if (item.type === 'thirst') { // ★ 新增
+    else if (item.type === 'thirst') {
         player.thirst = Math.min(player.max_thirst, player.thirst + item.value);
         msg = "解渴";
     }
     if (item.category === 'food' || item.category === 'drink') {
         player.stats.food_eaten++;
     }
-    // 處理額外效果 (例如咖啡同時補口渴和體力)
     if (item.extraEffect) {
         if(item.extraEffect.energy) player.energy = Math.min(player.max_energy, player.energy + item.extraEffect.energy);
         if(item.extraEffect.thirst) player.thirst = Math.min(player.max_thirst, player.thirst + item.extraEffect.thirst);
@@ -538,7 +703,6 @@ function useItem(itemId) {
     updateUI();
 }
 
-// --- 戰鬥系統 ---
 function getPlayerAttack() {
     let weaponDmg = 0;
     if (player.weapon && itemData[player.weapon]) {
@@ -555,263 +719,106 @@ function getPlayerDefense() {
     return (player.strength * 0.5) + armorDef; 
 }
 
-function startCombat(enemyId) {
-    if (player.hp <= 0) { log("重傷無法戰鬥！", "fail"); return; }
-    if (player.energy < 5) { log("體力不足！", "fail"); return; }
-
-    player.energy -= 5;
-    updateUI();
-
-    document.getElementById('enemy-selection').style.display = 'none';
-    document.getElementById('combat-screen').style.display = 'block';
-    
-    const enemy = enemyData[enemyId];
-    document.getElementById('enemy-name').innerText = enemy.name;
-    document.getElementById('battle-log').innerHTML = '';
-
-    simulateFight(enemy);
+function toggleMenu() {
+    const sidebar = document.getElementById('sidebar');
+    sidebar.classList.toggle('active');
 }
 
-async function simulateFight(originalEnemy) {
-    let enemyHp = originalEnemy.hp;
-    let playerHp = player.hp;
-    const battleLog = document.getElementById('battle-log');
-    
-    const addLog = (msg, style) => {
-        const div = document.createElement('div');
-        div.className = `log-line ${style}`;
-        div.innerText = msg;
-        battleLog.appendChild(div);
-        battleLog.scrollTop = battleLog.scrollHeight;
-    };
-
-    const wait = (ms) => new Promise(r => setTimeout(r, ms));
-
-    addLog(`=== 遭遇 ${originalEnemy.name} ===`, "normal");
-
-    while (enemyHp > 0 && playerHp > 0) {
-        await wait(600);
-
-        let totalAtk = getPlayerAttack();
-        let dmg = Math.floor(totalAtk * (0.8 + Math.random() * 0.4));
-        let hitChance = 0.8 + (player.speed - originalEnemy.spd) * 0.01;
-        if (Math.random() > hitChance) dmg = 0; 
-
-        if (dmg > 0) {
-            enemyHp -= dmg;
-            addLog(`> 你造成 ${dmg} 點傷害！`, "log-player");
-        } else {
-            addLog(`> 攻擊揮空了！`, "log-enemy");
+function checkAchievements() {
+    let newUnlock = false;
+    achievementList.forEach(ach => {
+        if (!player.achievements.includes(ach.id) && ach.check(player)) {
+            player.achievements.push(ach.id);
+            showToast(ach.name);
+            log(`🏆 成就解鎖：${ach.name} - ${ach.desc}`, "success");
+            newUnlock = true;
         }
+    });
+    if (newUnlock && document.getElementById('achievements').classList.contains('active')) {
+        renderAchievements();
+    }
+}
 
-        if (enemyHp <= 0) break;
-        await wait(400);
+function showToast(achName) {
+    const toast = document.getElementById('achievement-toast');
+    const msg = document.getElementById('toast-msg');
+    msg.innerText = achName;
+    toast.classList.add('show');
+    setTimeout(() => { toast.classList.remove('show'); }, 3000);
+}
 
-        let totalDef = getPlayerDefense();
-        let enemyDmg = Math.floor(originalEnemy.str * (0.8 + Math.random() * 0.4));
-        enemyDmg = Math.max(1, Math.floor(enemyDmg - (totalDef * 0.5)));
-        let dodgeChance = 0.1 + (player.speed - originalEnemy.spd) * 0.01;
-        
-        if (Math.random() < dodgeChance) {
-            addLog(`> 你閃過了攻擊！`, "log-player");
-        } else {
-            playerHp -= enemyDmg;
-            addLog(`> 敵人造成 ${enemyDmg} 點傷害。`, "log-enemy");
-            updateUI();
-        }
-        player.hp = Math.max(0, playerHp);
-        updateUI();
+function renderAchievements() {
+    const list = document.getElementById('achievement-list');
+    if (!list) return;
+    list.innerHTML = '';
+
+    const count = player.achievements.length;
+    const total = achievementList.length;
+    if(document.getElementById('achievement-progress')) {
+        document.getElementById('achievement-progress').innerText = `${count} / ${total}`;
+        document.getElementById('achievement-bar').style.width = `${(count/total)*100}%`;
     }
 
-    await wait(500);
-    
-    const timeCost = originalEnemy.time || 1;
-    passTime(timeCost);
+    const totalPages = Math.ceil(total / ACH_PAGE_SIZE);
+    if (achPage > totalPages && totalPages > 0) achPage = totalPages;
+    if (achPage < 1) achPage = 1;
 
-    if (player.hp > 0) {
-        player.money += originalEnemy.reward;
-        player.stats.fights_won++;
-        let expGain = originalEnemy.exp || 10;
-        addLog(`=== 勝利 ===`, "log-win");
-        addLog(`獲得: $${originalEnemy.reward}, Exp +${expGain}`, "log-win");
-        gainExp(expGain);
-        updateUI();
-        addLog(`戰鬥耗時 ${timeCost} 小時。`, "normal");
+    const startIndex = (achPage - 1) * ACH_PAGE_SIZE;
+    const endIndex = startIndex + ACH_PAGE_SIZE;
+    const itemsToShow = achievementList.slice(startIndex, endIndex);
+
+    itemsToShow.forEach(ach => {
+        const isUnlocked = player.achievements.includes(ach.id);
+        const card = document.createElement('div');
+        card.className = `ach-card ${isUnlocked ? 'unlocked' : ''}`;
+        card.innerHTML = `
+            <h4>
+                ${ach.name} 
+                <span>${isUnlocked ? '✅' : '🔒'}</span>
+            </h4>
+            <p>${ach.desc}</p>
+        `;
+        list.appendChild(card);
+    });
+
+    let paginationDiv = document.getElementById('ach-pagination');
+    if (!paginationDiv) {
+        paginationDiv = document.createElement('div');
+        paginationDiv.id = 'ach-pagination';
+        paginationDiv.className = 'pagination-controls';
+        list.parentNode.appendChild(paginationDiv);
+    }
+
+    if (totalPages <= 1) {
+        paginationDiv.style.display = 'none';
     } else {
-        addLog(`=== 死亡 ===`, "log-die");
-        addLog(`你被擊殺了...`, "log-die");
-        await wait(1000); 
-        gameOver();
-    }
-    if (originalEnemy === enemyData['boss']) {
-             if (!player.achievements.includes('kill_boss')) {
-                 player.achievements.push('kill_boss');
-                 showToast('新秩序');
-                 log(`🏆 成就解鎖：新秩序`, "success");
-             }
-        }
-        
-        checkAchievements();
-}
-
-function endCombat() {
-    document.getElementById('enemy-selection').style.display = 'block';
-    document.getElementById('combat-screen').style.display = 'none';
-}
-
-// ★ 關鍵修正：升級系統 (改用 while 支援連升多級)
-function gainExp(amount) {
-    player.exp += amount;
-    
-    // 如果一次獲得大量經驗，可以連續升級
-    while (player.exp >= player.max_exp) {
-        player.level++;
-        player.exp -= player.max_exp;
-        
-        // ★ 這裡控制升級難度曲線
-        // * 1.2 = 每一級需要的經驗值增加 20%
-        // * 1.5 = 每一級增加 50% (變難)
-        player.max_exp = Math.floor(player.max_exp * 1.2); 
-        
-        // 升級獎勵
-        player.max_hp += 10;
-        player.hp = player.max_hp; // 補滿血
-        player.strength += 2;
-        player.speed += 2;
-        
-        log(`🎉 升級了！現在等級 ${player.level}！(全屬性提升)`, "success");
-    }
-    
-    updateUI(); // 確保經驗條有更新
-}
-
-// --- UI 與雜項 ---
-function renderJobs() {
-    const job = jobData[player.job];
-    if (job) {
-        document.getElementById('current-job-name').innerText = job.name;
-        document.getElementById('current-job-desc').innerText = job.desc;
-        document.getElementById('current-job-salary').innerText = `$${job.salary}`;
-        document.getElementById('job-title').innerText = `(${job.name})`;
+        paginationDiv.style.display = 'flex';
+        paginationDiv.innerHTML = `
+            <button class="page-btn" onclick="changeAchPage(-1)" ${achPage === 1 ? 'disabled' : ''}>◀</button>
+            <span class="page-info">${achPage} / ${totalPages}</span>
+            <button class="page-btn" onclick="changeAchPage(1)" ${achPage === totalPages ? 'disabled' : ''}>▶</button>
+        `;
     }
 }
 
-function work() {
-    const job = jobData[player.job];
-    if (!job) return; 
-
-    // 檢查體力、時間
-    if (player.energy < gameConfig.workCost) { log("體力不足！", "fail"); return; }
-    
-    // 執行工作
-    player.energy -= gameConfig.workCost;
-    player.money += job.salary;
-    player.stats.times_worked++; 
-    checkAchievements(); 
-    // ★ 推進時間 (例如工作 4 小時)
-    log(`打卡上班... (經過 ${gameConfig.workTime} 小時)`, "normal");
-    passTime(gameConfig.workTime);
-    
-    gainExp(2); 
-    log(`工作完成！獲得薪水 $${job.salary}`, "success");
-    updateUI();
+function changeAchPage(direction) {
+    achPage += direction;
+    renderAchievements(); 
 }
 
-function train(stat) {
-    if (player.hp <= 0) { log("在醫院無法訓練！", "fail"); return; }
-    
-    if (player.energy >= gameConfig.trainCost) {
-        player.energy -= gameConfig.trainCost;
-        let gain = 1 + Math.floor(player[stat] * 0.01); 
-        player[stat] += gain;
-        
-        // ★ 推進時間 (例如訓練 1 小時)
-        passTime(gameConfig.trainTime);
-        
-        log(`訓練結束 (+${gain} ${stat})`, "success");
-        updateUI();
-    } else { log("體力不足！", "fail"); }
-}
-function rest() {
-    const now = Date.now();
-    if (now - player.last_rest < gameConfig.restCooldown) {
-        log("你還不累，過一會再睡吧。", "fail");
-        return;
-    }
-
-    const house = houseData[player.house];
-    
-    // ★ 睡覺會過很長時間 (例如 8 小時)
-    passTime(8); 
-
-    // 回復狀態
-    player.hp = Math.min(player.max_hp, player.hp + house.restore);
-    player.energy = Math.min(player.max_energy, player.energy + house.restore);
-    
-    // 睡覺也會稍微回復一點生存值 (假設有喝水吃早餐?) -> 或者不回，讓玩家起床必須吃東西
-    // 這裡設定：睡覺不補飢餓口渴，反而因為過了 8 小時會變餓
-    
-    player.last_rest = now;
-    log(`你在 ${house.name} 睡了 8 小時，精神飽滿。`, "success");
-    updateUI();
-}
-function commitCrime(crimeId) {
-    if (player.hp <= 0) { log("在醫院無法犯罪！", "fail"); return; } 
-
-    const crime = crimeData[crimeId];
-    const timeCost = crime.time || 1;
-    
-    if (player.energy >= crime.cost) { // 修正為檢查 energy
-        player.energy -= crime.cost;
-        if (Math.random() < crime.successRate) {
-            player.money += crime.reward;
-            player.stats.crimes_success++;
-            gainExp(1);
-            log(`犯罪成功：${crime.name} (+$${crime.reward})`, "success");
-        } else { log(`犯罪失敗：${crime.failMsg}`, "fail"); }
-        if (crimeId === 'rob_granny' && !player.achievements.includes('master_thief')) {
-             player.achievements.push('master_thief');
-             showToast('神偷');
-             log(`🏆 成就解鎖：神偷`, "success");
-        }
-        checkAchievements();
-        updateUI();
-    } else { log("體力不足！", "fail"); }
-    
-}
-
-function gameTick() {
-    const currentHouse = houseData[player.house] || houseData['shack'];
-    const mult = currentHouse.regenMult;
-
-    // 回復量 = 基礎值 * 房屋倍率
-    const energyGain = gameConfig.baseEnergyRecover * mult;
-    const hpGain = gameConfig.baseHpRecover * mult;
-
-    if (player.energy < player.max_energy) {
-        player.energy = Math.min(player.max_energy, player.energy + energyGain);
-    }
-    if (player.hp < player.max_hp) {
-        player.hp = Math.min(player.max_hp, player.hp + hpGain);
-    }
-    updateUI();
-}
-//房產
 function renderEstate() {
     const list = document.getElementById('estate-list');
     if(!list) return;
     list.innerHTML = '';
 
-    // 更新目前住處 UI
     const currentHouse = houseData[player.house];
     document.getElementById('current-house-name').innerText = currentHouse.name;
-    document.getElementById('current-house-mult').innerText = currentHouse.regenMult + "x";
+    document.getElementById('current-house-mult').innerText = `+${currentHouse.restore}/次`; 
 
     for (const [id, house] of Object.entries(houseData)) {
-        if (id === 'shack') continue; // 不顯示破屋
+        if (id === 'shack') continue; 
 
         const isOwned = player.house === id;
-        
         const card = document.createElement('div');
         card.className = 'card';
         card.innerHTML = `
@@ -820,6 +827,7 @@ function renderEstate() {
                 <span style="color:var(--accent-green)">$${house.cost}</span>
             </div>
             <p style="font-size:0.8rem; color:#aaa">${house.desc}</p>
+            <p style="font-size:0.9rem; color:#3498db">回復量: ${house.restore}</p>
             <button class="action-btn" 
                 style="width:100%; margin-top:5px; background:${isOwned ? '#444' : '#2ecc71'}" 
                 onclick="buyHouse('${id}')" 
@@ -830,6 +838,7 @@ function renderEstate() {
         list.appendChild(card);
     }
 }
+
 function buyHouse(houseId) {
     const house = houseData[houseId];
     if (player.money >= house.cost) {
@@ -842,7 +851,7 @@ function buyHouse(houseId) {
         log("金錢不足，買不起這棟房子！", "fail");
     }
 }
-//教育
+
 function renderEdu() {
     const list = document.getElementById('edu-list');
     if(!list) return;
@@ -850,7 +859,6 @@ function renderEdu() {
 
     for (const [id, course] of Object.entries(eduData)) {
         const isCompleted = player.completed_courses.includes(id);
-        
         const card = document.createElement('div');
         card.className = 'card';
         card.innerHTML = `
@@ -873,18 +881,14 @@ function renderEdu() {
 
 function takeCourse(courseId) {
     const course = eduData[courseId];
-    
-    // 檢查
     if (player.completed_courses.includes(courseId)) return;
     if (player.money < course.cost) { log("學費不足！", "fail"); return; }
     if (player.energy < course.energyCost) { log("體力不足，讀書是很累的！", "fail"); return; }
 
-    // 執行
     player.money -= course.cost;
     player.energy -= course.energyCost;
     player.completed_courses.push(courseId);
     
-    // 觸發效果
     if (course.effect) {
         course.effect(player);
     }
@@ -893,7 +897,7 @@ function takeCourse(courseId) {
     renderEdu();
     updateUI();
 }
-//賭場
+
 function gambleCoinFlip() {
     const input = document.getElementById('gamble-amount');
     const resultDiv = document.getElementById('gamble-result');
@@ -924,6 +928,7 @@ function gambleCoinFlip() {
     }
     updateUI();
 }
+
 function log(message, type) {
     const logArea = document.getElementById('log-area');
     if(!logArea) return;
@@ -939,7 +944,6 @@ function log(message, type) {
 function showPanel(panelId) {
     document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
     
-    // 檢查元素是否存在 (防呆)
     const targetPanel = document.getElementById(panelId);
     if(targetPanel) targetPanel.classList.add('active');
 
@@ -947,10 +951,16 @@ function showPanel(panelId) {
     const activeBtn = Array.from(document.querySelectorAll('.nav-btn')).find(btn => btn.getAttribute('onclick').includes(panelId));
     if (activeBtn) activeBtn.classList.add('active');
 
-    // ★ 新增這行：如果是手機版，點擊後自動收起選單
     const sidebar = document.getElementById('sidebar');
     if (window.innerWidth <= 768) {
         sidebar.classList.remove('active');
+    }
+
+    if (panelId !== 'fight' && isFighting) {
+        isFighting = false;
+        document.getElementById('enemy-selection').style.display = 'block';
+        document.getElementById('combat-screen').style.display = 'none';
+        log("你離開了戰鬥現場。", "normal");
     }
 }
 
@@ -966,18 +976,28 @@ function updateUI() {
 
     if(document.getElementById('total-atk')) document.getElementById('total-atk').innerText = getPlayerAttack();
   
-    const timeStr = player.time.toString().padStart(2, '0') + ":00";
+   const timeStr = player.time.toString().padStart(2, '0') + ":00";
     document.getElementById('day-display').innerText = player.day;
     document.getElementById('time-display').innerText = timeStr;
 
-    // ★ 更新生存條
-    if(document.getElementById('hunger')) {
+   if(document.getElementById('hunger')) {
         document.getElementById('hunger').innerText = Math.floor(player.hunger);
-        document.getElementById('hunger-bar').style.width = `${player.hunger}%`;
+        const hBar = document.getElementById('hunger-bar');
+        hBar.style.width = `${Math.max(0, player.hunger)}%`;
+        
+        // < 20 變紅， 0 變深紅
+        if (player.hunger <= 0) hBar.style.background = "#8e44ad"; // 紫色 (瀕死)
+        else if (player.hunger <= 20) hBar.style.background = "#e74c3c"; // 紅色 (警告)
+        else hBar.style.background = "#d35400"; // 正常橘色
     }
     if(document.getElementById('thirst')) {
         document.getElementById('thirst').innerText = Math.floor(player.thirst);
-        document.getElementById('thirst-bar').style.width = `${player.thirst}%`;
+        const tBar = document.getElementById('thirst-bar');
+        tBar.style.width = `${Math.max(0, player.thirst)}%`;
+
+        if (player.thirst <= 0) tBar.style.background = "#8e44ad";
+        else if (player.thirst <= 20) tBar.style.background = "#e74c3c"; 
+        else tBar.style.background = "#3498db"; 
     }
     let weaponName = "無 (徒手)";
     if (player.weapon && itemData[player.weapon]) weaponName = itemData[player.weapon].name;
@@ -987,7 +1007,6 @@ function updateUI() {
     const wDisplay = document.getElementById('weapon-display');
     if(wDisplay) wDisplay.innerText = `${weaponName} / ${armorName}`;
 
-    // 更新進度條
     const expPercent = Math.min(100, (player.exp / player.max_exp) * 100);
     const expBar = document.getElementById('exp-bar');
     if(expBar) expBar.style.width = `${expPercent}%`;
@@ -1007,7 +1026,16 @@ function updateUI() {
         renderAchievements();
     }
     renderInventory();
+    const restBtn = document.getElementById('btn-rest');
+    if (restBtn && houseData[player.house]) {
+        const restore = houseData[player.house].restore;
+        // 這裡顯示 "回復 10 / hr"
+        restBtn.innerText = `🛌 開始睡覺 (回復 ${restore} / hr)`;
+    }
+    if (document.getElementById('estate').classList.contains('active')) {
+        renderEstate();
+    }
 }
 
 // 啟動遊戲
-initGame();initGame
+initGame();

@@ -200,31 +200,48 @@
 
         <div id="content-area">
           <div id="home" class="panel active">
-            <div class="panel-header">藏身處</div>
-            <div class="panel-body">
-    <div class="card" style="margin-bottom: 20px;">
-        <h4>目前狀態</h4>
-        <p>
-            裝備武器：<span id="weapon-display" style="color: #e74c3c; font-weight: bold">無</span>
-        </p>
-    </div>
+    <div class="panel-header">藏身處</div>
+    <div class="panel-body">
+        
+        <div class="card" style="margin-bottom: 20px;">
+            <h4>目前狀態</h4>
+            <p>裝備武器：<span id="weapon-display" style="color:#e74c3c; font-weight:bold;">無</span></p>
+        </div>
 
-    <div class="card">
-        <div style="
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 10px;
-            border-bottom: 1px solid #333; 
-            padding-bottom: 10px;
-        ">
-            <h4 style="margin: 0">🎒 我的背包</h4>
+        <div class="card" style="margin-bottom: 20px; border-left: 5px solid #3498db;">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <h4 style="margin:0;">🛌 休息</h4>
+            </div>
+            <p id="home-desc" style="font-size:0.85rem; color:#aaa; margin:10px 0;"></p>
+            
+            <div style="display:flex; gap:10px; margin-bottom:10px; align-items:center;">
+                <span style="color:#aaa; font-size:0.9rem;">時長:</span>
+                <input type="number" id="rest-hours" value="1" min="1" max="24" 
+                       style="width:60px; padding:5px; background:#222; border:1px solid #444; color:white; border-radius:4px; text-align:center;">
+                <span style="color:#aaa; font-size:0.9rem;">小時</span>
+            </div>
+
+            <button id="btn-rest" class="action-btn" onclick="rest()" style="width:100%; background:#3498db;">
+                開始睡覺
+            </button>
+        </div>
+
+        <div class="card">
+            <div style="
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                margin-bottom: 10px;
+                border-bottom: 1px solid #333; 
+                padding-bottom: 10px;
+            ">
+                <h4 style="margin: 0">🎒 我的背包</h4>
+            </div>
+            <div id="inventory-list" class="grid-2"></div>
         </div>
         
-        <div id="inventory-list" class="grid-2"></div>
     </div>
 </div>
-          </div>
 
           <div id="jobs" class="panel">
             <div class="panel-header">我的職業</div>
