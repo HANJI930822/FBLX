@@ -4,6 +4,12 @@ const defaultPlayerState = {
   energy: 100, max_energy: 100,dexterity: 10,
   strength: 10, speed: 10, defense: 0,
   level: 1, exp: 0, max_exp: 100,
+  skills: {
+      lockpicking: 0, // 開鎖
+      hacking: 0,     // 駭客
+      driving: 0,     // 駕駛
+      stealth: 0      // 潛行
+  },
   job: null, 
   weather: 'sunny',
   weapon: null, 
@@ -234,6 +240,7 @@ const houseData = {
     }
 };
 const eduData = {
+    // --- 基礎屬性課程 ---
     'gym_course': { 
         name: "運動科學證書", cost: 2000, energyCost: 50,
         desc: "學習正確發力。永久增加 10% 力量。",
@@ -241,7 +248,7 @@ const eduData = {
     },
     'business_course': { 
         name: "商業管理學位", cost: 5000, energyCost: 50,
-        desc: "學習談判技巧。所有商店商品打 9 折 (此功能需在購買邏輯實作，這裡先給屬性獎勵示意)。永久獲得 $1000 獎金。",
+        desc: "學習談判技巧。商店打9折 (需實作)，並獲得 $1000 獎學金。",
         effect: (p) => { p.money += 1000; } 
     },
     'biology_course': { 
@@ -257,6 +264,33 @@ const eduData = {
             p.speed = Math.floor(p.speed * 1.2);
             p.max_hp = Math.floor(p.max_hp * 1.2);
         }
+    },
+
+    // --- ★ 新增：技能專項課程 ---
+    'lockpicking_101': { 
+        name: "鎖匠入門", cost: 500, energyCost: 30,
+        desc: "學習基本的開鎖原理。開鎖經驗 +50。",
+        skillReward: { skill: 'lockpicking', exp: 50 }
+    },
+    'python_basic': { 
+        name: "Python 基礎", cost: 1000, energyCost: 40,
+        desc: "寫出你的第一支爬蟲程式。駭客經驗 +50。",
+        skillReward: { skill: 'hacking', exp: 50 }
+    },
+    'driving_school': { 
+        name: "特技駕駛班", cost: 2000, energyCost: 50,
+        desc: "學習如何甩尾與高速過彎。駕駛經驗 +50。",
+        skillReward: { skill: 'driving', exp: 50 }
+    },
+    'ninja_class': { 
+        name: "潛行步法", cost: 1500, energyCost: 40,
+        desc: "學習如何像貓一樣走路。潛行經驗 +50。",
+        skillReward: { skill: 'stealth', exp: 50 }
+    },
+    'advanced_hacking': { 
+        name: "網路攻防戰", cost: 5000, energyCost: 80,
+        desc: "深入系統核心。駭客經驗 +150。",
+        skillReward: { skill: 'hacking', exp: 150 }
     }
 };
 const itemData = {
@@ -709,7 +743,9 @@ const itemData = {
 };
 
 const crimeData = {
-    // --- Lv.1 街頭小混混 (低風險) ---
+    // ==========================================
+    // Lv.1 街頭小混混 (低風險 / 無門檻)
+    // ==========================================
     search_trash: { 
         name: "翻垃圾桶", cost: 2, time: 1, successRate: 0.95, reward: 5, 
         desc: "雖然髒，但偶爾能撿到銅板。",
@@ -726,24 +762,33 @@ const crimeData = {
         failMsg: "店員抓住了你的手腕，並報了警。" 
     },
 
-    // --- Lv.2 職業罪犯 (中風險) ---
+    // ==========================================
+    // Lv.2 職業罪犯 (中風險 / 需初級技能)
+    // ==========================================
     steal_scooter: { 
         name: "偷機車", cost: 15, time: 2, successRate: 0.5, reward: 300, 
-        desc: "接線發動只需 10 秒。賣給解體工廠。",
-        failMsg: "發動失敗，車主拿著球棒衝出來。" 
+        desc: "需要：開鎖 Lv.1。接線發動只需 10 秒。賣給解體工廠。",
+        failMsg: "發動失敗，車主拿著球棒衝出來。",
+        reqSkill: 'lockpicking', 
+        reqLevel: 1
     },
     scam_call: { 
         name: "詐騙電話", cost: 20, time: 1, successRate: 0.45, reward: 500, 
-        desc: "「喂？我是你兒子啦，我被綁架了...」",
+        desc: "「喂？我是你兒子啦...」需要一點口才和運氣。",
         failMsg: "對方是警察局長...尷尬了。" 
+        // 刻意不設技能門檻，給玩家一個中階的無門檻選擇
     },
     rob_granny: { 
         name: "搶劫路人", cost: 25, time: 1, successRate: 0.4, reward: 800, 
-        desc: "挑軟柿子吃。但小心，有些老奶奶是退役特種兵。",
-        failMsg: "被對方的防狼噴霧噴滿臉。" 
+        desc: "需要：潛行 Lv.1。悄悄靠近，然後動手。",
+        failMsg: "被對方的防狼噴霧噴滿臉。",
+        reqSkill: 'stealth',
+        reqLevel: 1
     },
 
-    // --- Lv.3 地下教父 (高風險) ---
+    // ==========================================
+    // Lv.3 地下教父 (高風險 / 需高階技能)
+    // ==========================================
     protection_fee: { 
         name: "收保護費", cost: 40, time: 3, successRate: 0.3, reward: 2000, 
         desc: "去店家「關心」一下生意。如果不給錢，就讓他們生意做不下去。",
@@ -751,13 +796,17 @@ const crimeData = {
     },
     atm_hack: { 
         name: "駭入 ATM", cost: 60, time: 3, successRate: 0.2, reward: 5000, 
-        desc: "需要高超的技術。讓提款機像噴泉一樣吐錢。",
-        failMsg: "觸發靜音警報，防盜柵欄落下。" 
+        desc: "需要：駭客 Lv.2。讓提款機像噴泉一樣吐錢。",
+        failMsg: "觸發靜音警報，防盜柵欄落下。",
+        reqSkill: 'hacking',
+        reqLevel: 2
     },
     bank_heist: { 
         name: "銀行搶案", cost: 100, time: 5, successRate: 0.1, reward: 50000, 
-        desc: "人生的一把大賭注。面具、槍枝、逃亡車輛，缺一不可。",
-        failMsg: "SWAT 特警隊包圍了現場，任務失敗。" 
+        desc: "需要：駕駛 Lv.3。負責駕駛逃亡車輛甩開警車，人生的一把大賭注。",
+        failMsg: "SWAT 特警隊包圍了現場，任務失敗。",
+        reqSkill: 'driving',
+        reqLevel: 3
     }
 };
 
@@ -1004,128 +1053,241 @@ const getRandomKey = (obj) => {
     const keys = Object.keys(obj);
     return keys[Math.floor(Math.random() * keys.length)];
 };
+const RNG = {
+    // 從陣列隨機取 1 個
+    pick: (arr) => arr[Math.floor(Math.random() * arr.length)],
+    // 產生範圍整數
+    int: (min, max) => Math.floor(Math.random() * (max - min + 1)) + min,
+    
+    // 篩選敵人 ID (依強度範圍)
+    getEnemy: (minHp, maxHp) => {
+        const candidates = Object.entries(enemyData).filter(([id, e]) => 
+            e.hp >= minHp && e.hp <= maxHp && id !== 'boss' // 排除 Boss
+        ).map(([id]) => id);
+        return candidates.length > 0 ? candidates[Math.floor(Math.random() * candidates.length)] : 'punk';
+    },
+    
+    // 篩選物品 ID (依類別與價格範圍)
+    getItem: (cat, minPrice, maxPrice) => {
+        const candidates = Object.entries(itemData).filter(([id, i]) => 
+            i.category === cat && i.cost >= minPrice && i.cost <= maxPrice
+        ).map(([id]) => id);
+        return candidates.length > 0 ? candidates[Math.floor(Math.random() * candidates.length)] : 'water';
+    },
 
+    // 篩選犯罪 ID (依成功率與技能門檻)
+    getCrime: (minRate, maxRate, reqSkillLevel = 0) => {
+        const candidates = Object.entries(crimeData).filter(([id, c]) => {
+            const levelCheck = reqSkillLevel === 0 ? !c.reqSkill : (c.reqLevel && c.reqLevel >= reqSkillLevel);
+            return c.successRate >= minRate && c.successRate <= maxRate && levelCheck;
+        }).map(([id]) => id);
+        // 如果篩不到，回傳預設值防止報錯
+        return candidates.length > 0 ? candidates[Math.floor(Math.random() * candidates.length)] : 'shoplift';
+    }
+};
 // ★ 高度隨機任務生成器 (Ver 2.0)
 const MissionGenerator = {
     
-    // 1. 指定狩獵 (直接顯示敵人名字)
-    hunt_specific: (level) => {
-        // 排除 Boss，隨機抓一個倒楣鬼
-        const enemies = Object.keys(enemyData).filter(k => k !== 'boss');
-        const targetId = enemies[Math.floor(Math.random() * enemies.length)];
-        const targetName = enemyData[targetId].name;
+    // ==========================================
+    // 🟢 簡單任務 (Easy) - 適合新手 / 累積資源
+    // ==========================================
+    generateEasy: (level) => {
+        const type = RNG.pick(['eat', 'hunt', 'work', 'crime_easy']);
         
-        // 數量隨等級浮動
-        const count = Math.max(1, Math.floor(1 + level * 0.15 + Math.random() * 2));
+        switch (type) {
+            case 'eat': // 吃便宜食物
+                const foodId = RNG.getItem('food', 0, 50);
+                const count = RNG.int(2, 4);
+                return {
+                    type: 'consume_specific',
+                    difficulty: 'easy',
+                    name: `補給：${itemData[foodId].name}`,
+                    desc: `食用 ${count} 個 (保持體力)`,
+                    targetId: foodId,
+                    targetVal: count,
+                    reward: { money: count * itemData[foodId].cost + 100, exp: 50 }
+                };
+            case 'hunt': // 打弱怪 (HP < 100)
+                const enemyId = RNG.getEnemy(0, 100);
+                const killCount = RNG.int(1, 3);
+                return {
+                    type: 'hunt_specific',
+                    difficulty: 'easy',
+                    name: `驅逐：${enemyData[enemyId].name}`,
+                    desc: `擊敗 ${killCount} 次`,
+                    targetId: enemyId,
+                    targetVal: killCount,
+                    reward: { money: killCount * 100 + 50, exp: 50 }
+                };
+            case 'crime_easy': // 高成功率犯罪 (>80%)
+                const crimeId = RNG.getCrime(0.8, 1.0);
+                const crimeCount = RNG.int(2, 4);
+                return {
+                    type: 'crime_specific',
+                    difficulty: 'easy',
+                    name: `試膽：${crimeData[crimeId].name}`,
+                    desc: `執行 ${crimeCount} 次`,
+                    targetId: crimeId,
+                    targetVal: crimeCount,
+                    reward: { money: 200, exp: 50 }
+                };
+            default: // 打工
+                const workCount = RNG.int(2, 3);
+                return {
+                    type: 'work',
+                    difficulty: 'easy',
+                    name: '勤勞致富',
+                    desc: `打卡上班 ${workCount} 次`,
+                    targetVal: workCount,
+                    reward: { money: 150, exp: 30 }
+                };
+        }
+    },
+
+    // ==========================================
+    // 🟡 中等任務 (Medium) - 需要投入成本或技能
+    // ==========================================
+    generateMedium: (level) => {
+        const type = RNG.pick(['drink', 'hunt_mid', 'crime_mid', 'skill_xp', 'spend']);
         
-        return {
-            type: 'hunt_specific',
-            // 標題直接就是目標
-            name: `擊敗：${targetName}`, 
-            desc: `累積擊敗 ${count} 次`,
-            targetId: targetId,
-            targetVal: count,
-            check: (p, m) => (p.daily_progress.enemies_killed?.[m.targetId] || 0) >= m.targetVal,
-            reward: { money: count * 120 + 100, exp: count * 60 }
-        };
+        switch (type) {
+            case 'drink': // 喝較貴飲料
+                const drinkId = RNG.getItem('drink', 20, 100);
+                const count = RNG.int(2, 5);
+                return {
+                    type: 'consume_specific',
+                    difficulty: 'medium',
+                    name: `暢飲：${itemData[drinkId].name}`,
+                    desc: `飲用 ${count} 次`,
+                    targetId: drinkId,
+                    targetVal: count,
+                    reward: { money: 300, exp: 100 }
+                };
+            case 'hunt_mid': // 打中階怪 (HP 100-300)
+                const enemyId = RNG.getEnemy(100, 300);
+                const killCount = RNG.int(2, 4);
+                return {
+                    type: 'hunt_specific',
+                    difficulty: 'medium',
+                    name: `肅清：${enemyData[enemyId].name}`,
+                    desc: `擊敗 ${killCount} 次`,
+                    targetId: enemyId,
+                    targetVal: killCount,
+                    reward: { money: killCount * 200, exp: 150 }
+                };
+            case 'crime_mid': // 中等犯罪 (成功率 40%-80%)
+                const crimeId = RNG.getCrime(0.4, 0.8);
+                const crimeCount = RNG.int(2, 3);
+                return {
+                    type: 'crime_specific',
+                    difficulty: 'medium',
+                    name: `行動：${crimeData[crimeId].name}`,
+                    desc: `成功 ${crimeCount} 次`,
+                    targetId: crimeId,
+                    targetVal: crimeCount,
+                    reward: { money: 500, exp: 150 }
+                };
+            case 'skill_xp': // 獲得技能經驗
+                const xpTarget = RNG.int(50, 150);
+                return {
+                    type: 'gain_skill_exp',
+                    difficulty: 'medium',
+                    name: '自我提升',
+                    desc: `獲得 ${xpTarget} 點技能經驗 (去上課!)`,
+                    targetVal: xpTarget,
+                    reward: { money: 600, exp: 200 }
+                };
+            default: // 消費
+                const spendAmt = RNG.int(1000, 3000);
+                return {
+                    type: 'spend',
+                    difficulty: 'medium',
+                    name: '促進經濟',
+                    desc: `消費滿 $${spendAmt}`,
+                    targetVal: spendAmt,
+                    reward: { exp: Math.floor(spendAmt/5) }
+                };
+        }
     },
 
-    // 2. 指定犯罪 (直接顯示犯罪名稱)
-    crime_specific: (level) => {
-        const crimeId = getRandomKey(crimeData);
-        const crimeName = crimeData[crimeId].name;
-        const count = Math.max(1, Math.floor(1 + Math.random() * 3)); // 1~3次
-
-        return {
-            type: 'crime_specific',
-            name: `執行：${crimeName}`,
-            desc: `成功完成 ${count} 次`,
-            targetId: crimeId,
-            targetVal: count,
-            check: (p, m) => (p.daily_progress.crimes_specific?.[m.targetId] || 0) >= m.targetVal,
-            reward: { money: count * 100, exp: count * 40 }
-        };
-    },
-
-    // 3. 指定消費 (指定吃某種東西)
-    consume_specific: (level) => {
-        // 只抓食物或飲料
-        const consumables = Object.keys(itemData).filter(k => 
-            itemData[k].category === 'food' || itemData[k].category === 'drink'
-        );
-        const itemId = consumables[Math.floor(Math.random() * consumables.length)];
-        const itemName = itemData[itemId].name;
-        const count = Math.max(1, Math.floor(1 + Math.random() * 2));
-
-        return {
-            type: 'consume_specific',
-            name: `需求：${itemName}`,
-            desc: `食用/飲用 ${count} 個`,
-            targetId: itemId,
-            targetVal: count,
-            check: (p, m) => (p.daily_progress.items_consumed?.[m.targetId] || 0) >= m.targetVal,
-            reward: { money: count * itemData[itemId].cost + 100, exp: 50 } // 補貼餐費
-        };
-    },
-
-    // 4. 累積賺錢 (純數字變化)
-    earn_money: (level) => {
-        // 金額隨機度高一點：例如 100 ~ 1000 之間
-        const target = (Math.floor(Math.random() * 10) + 1) * 100 + (level * 50);
-        return {
-            type: 'earn',
-            name: `目標：賺取現金`,
-            desc: `今日獲利 $${target}`,
-            targetVal: target,
-            check: (p, m) => (p.daily_progress.money_earned || 0) >= m.targetVal,
-            reward: { exp: Math.floor(target / 4) }
-        };
-    },
-
-    // 5. 訓練狂 (指定訓練項目)
-    train_stat: (level) => {
-        const stat = Math.random() > 0.5 ? 'strength' : 'speed';
-        const statName = stat === 'strength' ? '力量' : '速度';
-        const count = Math.floor(2 + Math.random() * 4);
+    // ==========================================
+    // 🔴 困難任務 (Hard) - 高風險高回報
+    // ==========================================
+    generateHard: (level) => {
+        // 加入 'earn' (賺大錢)
+        const type = RNG.pick(['hunt_hard', 'crime_hard', 'earn', 'train_hard']);
         
-        return {
-            type: 'train_stat',
-            name: `鍛鍊：${statName}`,
-            desc: `訓練 ${count} 次`,
-            targetStat: stat,
-            targetVal: count,
-            check: (p, m) => {
-                // 需要去 game.js 的 train 函數確認是否有紀錄 train_str / train_spd
-                // 假設原本的 train 函數有這兩行：
-                // if (stat === 'strength') player.daily_progress.train_str++
-                // if (stat === 'speed') player.daily_progress.train_spd++
-                const key = m.targetStat === 'strength' ? 'train_str' : 'train_spd';
-                return (p.daily_progress[key] || 0) >= m.targetVal;
-            },
-            reward: { money: 150, exp: 100 }
-        };
+        switch (type) {
+            case 'hunt_hard': // 打強敵 (HP > 300)
+                const enemyId = RNG.getEnemy(300, 2000); // 包含 Hitman, Boss 等
+                const killCount = RNG.int(1, 2); // 只要殺 1-2 次
+                return {
+                    type: 'hunt_specific',
+                    difficulty: 'hard',
+                    name: `獵殺令：${enemyData[enemyId].name}`,
+                    desc: `擊敗 ${killCount} 次 (強敵注意!)`,
+                    targetId: enemyId,
+                    targetVal: killCount,
+                    reward: { money: 2000, exp: 1000, item: 'diamond' }
+                };
+            case 'crime_hard': // 高難度犯罪 (成功率 < 40% 或 需高技能)
+                // 這裡嘗試抓需要技能的犯罪
+                const crimeId = RNG.getCrime(0.0, 0.4, 1); 
+                return {
+                    type: 'crime_specific',
+                    difficulty: 'hard',
+                    name: `大案子：${crimeData[crimeId].name}`,
+                    desc: `成功執行 1 次`,
+                    targetId: crimeId,
+                    targetVal: 1,
+                    reward: { money: 3000, exp: 800, item: 'gold_bar' }
+                };
+            case 'earn': // 賺大錢
+                const earnTarget = 2000 + (level * 500);
+                return {
+                    type: 'earn',
+                    difficulty: 'hard',
+                    name: '日進斗金',
+                    desc: `今日淨賺 $${earnTarget}`,
+                    targetVal: earnTarget,
+                    reward: { exp: 2000, item: 'nano_suit' }
+                };
+            default: // 瘋狂訓練
+                const trainCount = RNG.int(8, 12);
+                const stat = Math.random() > 0.5 ? 'strength' : 'speed';
+                const statName = stat === 'strength' ? '力量' : '速度';
+                return {
+                    type: 'train_stat',
+                    difficulty: 'hard',
+                    name: `極限鍛鍊：${statName}`,
+                    desc: `訓練 ${trainCount} 次`,
+                    targetStat: stat,
+                    targetVal: trainCount,
+                    reward: { money: 1000, exp: 1500 }
+                };
+        }
     }
 };
 
 // 產生器函數 (權重分配)
 function generateRandomDailyMissions(playerLevel) {
+    const categories = Object.keys(MissionGenerator);
     const missions = [];
-    const types = ['hunt_specific', 'crime_specific', 'consume_specific', 'earn_money', 'train_stat'];
     
-    // 隨機抽 3 個不重複的類型
-    // 洗牌算法
-    for (let i = types.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [types[i], types[j]] = [types[j], types[i]];
+    // 隨機挑選 3 個不同的類型
+    const selectedCats = [];
+    while(selectedCats.length < 3) {
+        const cat = categories[Math.floor(Math.random() * categories.length)];
+        if(!selectedCats.includes(cat)) selectedCats.push(cat);
     }
     
-    // 取前 3 個
-    for(let i=0; i<3; i++) {
-        const type = types[i];
-        const mission = MissionGenerator[type](playerLevel);
-        mission.id = `rnd_${Date.now()}_${i}`;
-        missions.push(mission);
-    }
+    // 生成任務物件
+    selectedCats.forEach(cat => {
+        const missionObj = MissionGenerator[cat](playerLevel);
+        // 給每個任務一個臨時的唯一 ID (為了追蹤完成狀態)
+        missionObj.id = `daily_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        missions.push(missionObj);
+    });
     
     return missions;
 }
