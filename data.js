@@ -1,7 +1,7 @@
 const defaultPlayerState = {
   money: 0,
   hp: 100, max_hp: 100,
-  energy: 100, max_energy: 100,dexterity: 10,
+  energy: 100, max_energy: 100,
   strength: 10, speed: 10, defense: 0,
   level: 1, exp: 0, max_exp: 100,
   skills: {
@@ -101,7 +101,7 @@ const jobData = {
             max_hunger: 50, // 飢餓上限提升
             max_thirst: 50, // 口渴上限提升
             salary_growth: 15,
-            dexterity: 10,  // 翻找東西很靈活
+            speed: 10,  // 翻找東西很靈活
             money: 100,
             desc: "飢餓/口渴上限+50, 靈巧+10, 存款$100"
         }
@@ -126,7 +126,7 @@ const jobData = {
         startBonus: {
             money: 2000,
             strength: -5,
-            dexterity: -5,
+            speed: -5,
             salary_growth: 20,
             max_energy: -20, // 容易累
             desc: "存款$2000, 力量-5, 靈巧-5, 體力上限-20"
@@ -140,7 +140,7 @@ const jobData = {
         startBonus: { 
             strength: 25, 
             defense: 5,
-            dexterity: -10, // 動作大開大闔，不靈活
+            speed: -10, // 動作大開大闔，不靈活
             salary_growth: 30,
             weapon: 'wooden_bat',
             desc: "力量+25, 防禦+5, 靈巧-10, 自帶球棒" 
@@ -164,12 +164,12 @@ const jobData = {
         startBonus: { 
             strength: 20, 
             speed: 20, 
-            dexterity: 20,
+            speed: 20,
             max_hp: -30, // 身體素質其實一般，被打很痛
             salary_growth: 60,
             defense: -5,
             weapon: 'switchblade',
-            desc: "攻/速/靈+20, 最大生命-30, 自帶彈簧刀" 
+            desc: "攻/速+20, 最大生命-30, 自帶彈簧刀" 
         }
     },
 
@@ -179,7 +179,7 @@ const jobData = {
         desc: "逃跑是他的強項，沒人抓得住他。",
         startBonus: { 
             speed: 40, 
-            dexterity: 20, 
+            speed: 20, 
             salary_growth: 5,
             strength: -10, // 手無縛雞之力
             accessory: 'sneakers', // 自帶鞋子
@@ -203,7 +203,7 @@ const jobData = {
         name: "地下密醫", salary: 150, 
         desc: "手很巧，隨身帶著藥品，但身體虛弱。",
         startBonus: { 
-            dexterity: 30, // 手術快
+            speed: 30, // 手術快
             strength: -5,
             max_hp: -40, 
             salary_growth: 150,
@@ -405,39 +405,39 @@ const itemData = {
     // 增加各種玄學屬性
     'tinfoil_hat': {
         name: "錫箔帽", cost: 50, category: 'accessory', type: 'accessory', value: 1,
-        desc: "靈+1。防止政府與外星人讀取你的腦波。智商看起來-50。"
+        desc: "速+1。防止政府與外星人讀取你的腦波。智商看起來-50。"
     },
     'sunglasses': { 
         name: "墨鏡", cost: 200, category: 'accessory', type: 'accessory', value: 3, 
-        desc: "靈+3。戴上後夜晚視線變差，但帥氣度提升，閃避率似乎高了一點點？" 
+        desc: "速+3。戴上後夜晚視線變差，但帥氣度提升，閃避率似乎高了一點點？" 
     },
     'lucky_charm': { 
         name: "開運御守", cost: 888, category: 'accessory', type: 'accessory', value: 10, 
-        desc: "靈+10。來自遙遠東方的神祕力量，據說能逢凶化吉。" 
+        desc: "速+10。來自遙遠東方的神祕力量，據說能逢凶化吉。" 
     },
     'smart_watch': { 
         name: "戰術手錶", cost: 8000, category: 'accessory', type: 'accessory', value: 40, 
-        desc: "靈+40。內建心率監測與敵情分析雷達（其實只是普通的GPS）。" 
+        desc: "速+40。內建心率監測與敵情分析雷達（其實只是普通的GPS）。" 
     },
     'cyber_eye': { 
         name: "義眼", cost: 60000, category: 'accessory', type: 'accessory', value: 100, 
-        desc: "靈+100。動態視力強化，敵人的動作在你眼中像慢動作重播。" 
+        desc: "速+100。動態視力強化，敵人的動作在你眼中像慢動作重播。" 
     },
     'gold_chain_fake': { 
         name: "粗金項鍊(鍍金)", cost: 300, category: 'accessory', type: 'accessory', value: 5, 
-        desc: "靈+5。戴上去像個大哥。流汗時脖子會黑一圈。" 
+        desc: "速+5。戴上去像個大哥。流汗時脖子會黑一圈。" 
     },
     'slippers': { 
         name: "藍白拖", cost: 1000, category: 'accessory', type: 'accessory', value: 15, 
-        desc: "靈+15。台灣傳奇裝備，既能跑步又能打蟑螂。" 
+        desc: "速+15。台灣傳奇裝備，既能跑步又能打蟑螂。" 
     },
     'sneakers': { 
         name: "運動鞋", cost: 3000, category: 'accessory', type: 'accessory', value: 25, 
-        desc: "靈+25。至少逃跑時腳不會痛。" 
+        desc: "速+25。至少逃跑時腳不會痛。" 
     },
     'ninja_boots': { 
         name: "忍者足具", cost: 20000, category: 'accessory', type: 'accessory', value: 80, 
-        desc: "靈+80。走路無聲，想去哪就去哪，偷情...我是說偷襲必備。" 
+        desc: "速+80。走路無聲，想去哪就去哪，偷情...我是說偷襲必備。" 
     },
 
     // --- 醫療 (Medical) ---
@@ -817,7 +817,6 @@ const enemyData = {
         hp: 20,
         str: 3,
         spd: 8,
-        dex: 10,
         reward: 5,
         exp: 3,
         time: 1,
@@ -831,7 +830,6 @@ const enemyData = {
         hp: 30,
         str: 5,
         spd: 2,
-        dex: 5,
         reward: 10,
         exp: 5,
         time: 1,
@@ -847,7 +845,6 @@ const enemyData = {
         hp: 40,
         str: 8,
         spd: 15,
-        dex: 25,
         reward: 30,
         exp: 15,
         time: 1,
@@ -864,7 +861,6 @@ const enemyData = {
         hp: 80,
         str: 15,
         spd: 10,
-        dex: 20,
         reward: 60,
         exp: 20,
         time: 2,
@@ -881,7 +877,6 @@ const enemyData = {
         hp: 100,
         str: 20,
         spd: 15,
-        dex: 30,
         reward: 150,
         exp: 40,
         time: 2,
@@ -898,7 +893,6 @@ const enemyData = {
         hp: 200,
         str: 40,
         spd: 25,
-        dex: 50,
         reward: 200,
         exp: 80,
         time: 3,
@@ -916,7 +910,6 @@ const enemyData = {
         hp: 250,
         str: 60,
         spd: 70,
-        dex: 80,
         reward: 500,
         exp: 150,
         time: 3,
@@ -933,7 +926,6 @@ const enemyData = {
         hp: 300,
         str: 50,
         spd: 40,
-        dex: 60,
         reward: 400,
         exp: 120,
         time: 4,
@@ -950,7 +942,6 @@ const enemyData = {
         hp: 500,
         str: 80,
         spd: 60,
-        dex: 100,
         reward: 1000,
         exp: 300,
         time: 5,
@@ -969,7 +960,6 @@ const enemyData = {
         hp: 1000,
         str: 150,
         spd: 100,
-        dex: 150,
         reward: 5000,
         exp: 500,
         time: 6,

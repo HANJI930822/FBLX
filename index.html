@@ -191,6 +191,9 @@
           <button onclick="openInventory()" class="nav-btn" style="color: #00d2d3;">
             🎒 背包
           </button>
+          <button onclick="showPanel('online-pvp')" class="nav-btn" style="color: #0984e3;">
+           🌐 線上對戰 (Beta)
+          </button>
         </nav>
         <div class="sidebar-footer">
           <button class="nav-btn" onclick="showTutorial()" style="margin-bottom: 10px;">
@@ -246,9 +249,7 @@
             <span
               >🛡️ 防: <span id="total-def" style="color: #3498db">0</span></span
             >
-            <span
-              >🦵 靈: <span id="total-dex" style="color: #2ecc71">0</span></span
-            >
+            <span>💨 速: <span id="total-spd" style="color: #f1c40f">0</span></span>
           </div>
 
           <div style="margin-bottom: 10px">
@@ -610,9 +611,40 @@
               <div id="ach-pagination" class="pagination-controls"></div>
             </div>
           </div>
+          <div id="online-pvp" class="panel">
+    <div class="panel-header">線上競技場</div>
+    <div class="panel-body">
+        <div id="online-lobby">
+            <p>與世界各地的玩家進行即時對戰。</p>
+            <button class="action-btn" onclick="joinQueue()" style="width: 100%; padding: 20px; font-size: 1.2rem;">
+                🔍 尋找對手
+            </button>
+            <p id="queue-status" style="margin-top: 20px; color: #f1c40f;"></p>
+        </div>
+
+        <div id="online-combat-screen" style="display: none;">
+            <div class="card" style="border-left: 5px solid #e74c3c; margin-bottom: 15px;">
+                <h3 style="margin:0;">VS <span id="online-enemy-name">對手</span></h3>
+                <div class="progress-track" style="margin-top: 10px;">
+                    <div id="online-enemy-hp-bar" class="progress-fill hp-fill" style="width: 100%;"></div>
+                </div>
+                <p id="online-enemy-hp-text" style="text-align: right; color: #e74c3c;">HP: ???</p>
+            </div>
+
+            <div id="online-log" class="battle-log" style="height: 200px;"></div>
+
+            <div id="online-controls" style="display: grid; grid-template-columns: 1fr; gap: 10px; margin-top: 10px;">
+                <button id="btn-online-atk" class="action-btn" onclick="sendAttack()" disabled>
+                    ⚔️ 攻擊 (等待對手...)
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
       </main>
     </div>
+    <script src="/socket.io/socket.io.js"></script>
     <script src="data.js"></script>
     <script src="game.js"></script>
   </body>

@@ -44,7 +44,6 @@ function initGame() {
             if(player.thirst === undefined) player.thirst = 100;
             if(player.max_thirst === undefined) player.max_thirst = 100;
             if(player.day === undefined) player.day = 1;
-            if(player.dexterity === undefined) player.dexterity = 10; // ★ 新增
             if(player.accessory === undefined) player.accessory = null; // ★ 新增
             if(player.inventory === undefined) player.inventory = {};
             if(player.time === undefined) player.time = 8;
@@ -165,51 +164,37 @@ function updateWeather() {
         log("酸雨腐蝕了你的皮膚 (HP-5)", "fail");
     }
 }
-//靈敏度
-function getPlayerDexterity() {
-    let bonus = 0;
-    if (player.accessory && itemData[player.accessory]) {
-        bonus = itemData[player.accessory].value;
-    }
-    return player.dexterity + bonus;
-}
 function attemptEscape() {
-    // 1. 取得當前敵人 (我們需要知道現在在打誰)
-    if (!window.currentEnemyId) {
-        // 防呆：如果找不到敵人，直接離開
-        endCombat();
-        return;
-    }
+    if (!window.currentEnemyId) { endCombat(); return; }
     
     const enemy = typeof getEnemyCurrentState === 'function' 
                   ? getEnemyCurrentState(window.currentEnemyId) 
                   : enemyData[window.currentEnemyId];
-    const playerDex = getPlayerDexterity();
-    const enemyDex = enemy.dex || 10; // 預設 10
-
-    // 2. 計算成功率
-    let escapeChance = playerDex / (playerDex + enemyDex);
     
-    // 加上一點基礎運氣，並設定上下限 (至少 10% 機會，最多 90% 機會)
-    escapeChance = Math.min(0.9, Math.max(0.1, escapeChance));
-      const escapeTimeCost = 0.5
-    log(`嘗試逃跑...`, "normal");
+    // ★ 修改：使用總速度 (含裝備) vs 敵人速度
+    const playerSpd = getPlayerSpeed();
+    const enemySpd = enemy.spd || 10;
 
-    // 3. 判定
+    // 計算成功率 (速度越快，逃跑率越高)
+    let escapeChance = playerSpd / (playerSpd + enemySpd);
+    
+    // 限制機率 10% ~ 90%
+    escapeChance = Math.min(0.9, Math.max(0.1, escapeChance));
+    
+    const escapeTimeCost = 0.5;
+    log(`嘗試逃跑... (成功率 ${Math.floor(escapeChance*100)}%)`, "normal");
+
     if (Math.random() < escapeChance) {
-        log("💨 你成功甩掉了敵人！", "success");
+        log("💨 你憑藉著速度甩掉了敵人！", "success");
         passTime(escapeTimeCost);
-        endCombat(); // 成功：呼叫原本的結束函數
+        endCombat();
     } else {
-        log("🚫 逃跑失敗！被敵人攔住了！", "fail");
-        // 失敗：不呼叫 endCombat，戰鬥繼續
-        // 為了懲罰，可以扣一點時間
-        passTime(escapeTimeCost*2);
+        log("🚫 逃跑失敗！敵人的速度比你快！", "fail");
+        passTime(escapeTimeCost * 2);
         const damage = Math.max(1, Math.floor(enemy.str * 0.5));
         player.hp = Math.max(0, player.hp - damage);
-        updateUI();
-    }
-    const battleLog = document.getElementById('battle-log');
+        
+        const battleLog = document.getElementById('battle-log');
         if(battleLog) {
              const div = document.createElement('div');
              div.className = 'log-line log-enemy';
@@ -217,10 +202,13 @@ function attemptEscape() {
              battleLog.appendChild(div);
              battleLog.scrollTop = battleLog.scrollHeight;
         }
-    if (player.hp <= 0) {
+        
+        updateUI();
+        if (player.hp <= 0) {
             log("你在逃跑失敗後被擊倒了...", "fail");
             gameOver('dead');
         }
+    }
 }
 function forceReset() {
     localStorage.removeItem('myTornGame');
@@ -1402,8 +1390,15 @@ function getPlayerDefense() {
     return Math.floor(player.strength * 0.5) + armorDef; 
 }
 function getPlayerSpeed() {
+    let accessoryBonus = 0;
+    if (player.accessory && itemData[player.accessory]) {
+        accessoryBonus = itemData[player.accessory].value;
+    }
+
     const weatherBonus = weatherData[player.weather]?.effect.spd || 0;
-    return Math.floor(player.speed + weatherBonus);
+    
+    // 總速度 = 基礎速度 + 天氣 + 飾品
+    return Math.floor(player.speed + weatherBonus + accessoryBonus);
 }
 function toggleMenu() {
     const sidebar = document.getElementById('sidebar');
@@ -1541,7 +1536,7 @@ function renderEdu() {
     for (const [id, course] of Object.entries(eduData)) {
         const isCompleted = player.completed_courses.includes(id);
         
-        // ★ 修正：這行必須移到最上面，先定義才能使用！
+        // ★★★ 修正：這行必須放在最上面！先定義才能使用 ★★★
         const isSkillCourse = !!course.skillReward; 
 
         const card = document.createElement('div');
@@ -1554,7 +1549,7 @@ function renderEdu() {
         // 針對技能課程的特殊設定
         if (isSkillCourse) {
             btnText = '進修 (+EXP)';
-            btnDisabled = false; // 技能課可以一直上
+            btnDisabled = false; // 技能課可以一直上，永遠不鎖定
             btnColor = '#9b59b6'; // 紫色按鈕區分
         }
 
@@ -1805,7 +1800,6 @@ function gainExp(amount) {
         player.hp = player.max_hp;
         player.strength += 2;
         player.speed += 2;
-        player.dexterity += 1; // ★ 新增：升級加靈敏度
         if (player.daily_progress && player.level > oldLevel) {
             player.daily_progress.level_ups = (player.daily_progress.level_ups || 0) + 1;
             console.log(`每日成就：升級次數 +1，現在 ${player.daily_progress.level_ups} 次`);
@@ -2657,6 +2651,181 @@ function unequipItem(slot) {
         document.getElementById('inv-selected-info').style.display = 'none';
         document.getElementById('inv-empty-msg').style.display = 'block';
     }
+}
+// === 線上對戰系統 (Socket.io) ===
+let socket;
+let currentRoomId = null;
+let onlineEnemy = null;
+let isMyTurn = false;
+
+function initSocket() {
+    // 如果已經連線過就不再連
+    if (socket) return;
+    
+    // 嘗試連線
+    try {
+        socket = io(); // 自動連線到當前伺服器
+
+        // 1. 收到等待訊息
+        socket.on('waiting', (msg) => {
+            document.getElementById('queue-status').innerText = msg;
+        });
+
+        // 2. 配對成功，開始戰鬥
+        socket.on('match_found', (data) => {
+            currentRoomId = data.roomId;
+            onlineEnemy = data.opponent; // 這是對手的數據
+            isMyTurn = data.isMyTurn;
+            
+            // 初始化對手血量 (簡單處理，使用最大血量)
+            onlineEnemy.currentHp = onlineEnemy.hp;
+
+            startOnlineCombatUI();
+        });
+
+        // 3. 收到對手動作
+        socket.on('opponent_action', (data) => {
+            if (data.actionType === 'attack') {
+                // 我被打到了
+                const dmg = data.damage;
+                player.hp = Math.max(0, player.hp - dmg);
+                
+                logOnline(`對手造成了 ${dmg} 點傷害！`, "log-enemy");
+                updateUI(); // 更新我的血條
+
+                if (player.hp <= 0) {
+                    // 我輸了
+                    socket.emit('combat_action', { roomId: currentRoomId, actionType: 'win' }); // 通知對手他贏了
+                    endOnlineCombat(false);
+                } else {
+                    // 換我攻擊
+                    isMyTurn = true;
+                    updateOnlineButtons();
+                }
+            } else if (data.actionType === 'win') {
+                // 對手說他輸了 (或我贏了)
+                endOnlineCombat(true);
+            }
+        });
+
+    } catch (e) {
+        console.log("未運行在伺服器環境，無法連線。");
+        document.getElementById('queue-status').innerText = "⚠️ 請使用 Node.js 啟動伺服器以進行連線。";
+    }
+}
+
+// 加入配對
+function joinQueue() {
+    initSocket();
+    if (!socket) return;
+
+    document.getElementById('queue-status').innerText = "連線中...";
+    
+    // 準備我的數據傳給伺服器
+    const myData = {
+        name: player.title ? `${player.title} ${jobData[player.job].name}` : jobData[player.job].name,
+        hp: player.max_hp,
+        str: getPlayerAttack(), // 總攻擊
+        def: getPlayerDefense(), // 總防禦
+        spd: getPlayerSpeed()
+    };
+
+    socket.emit('find_match', myData);
+}
+
+// 介面切換：進入戰鬥
+function startOnlineCombatUI() {
+    document.getElementById('online-lobby').style.display = 'none';
+    document.getElementById('online-combat-screen').style.display = 'block';
+    document.getElementById('online-log').innerHTML = ''; // 清空 Log
+
+    // 顯示對手資訊
+    document.getElementById('online-enemy-name').innerText = onlineEnemy.name;
+    updateEnemyHpUI();
+
+    logOnline(`配對成功！對手：${onlineEnemy.name}`, "normal");
+    updateOnlineButtons();
+}
+
+// 玩家點擊攻擊
+function sendAttack() {
+    if (!isMyTurn) return;
+
+    // 計算傷害 (簡單版：我的攻擊 - 對方防禦*0.5)
+    // 注意：這裡其實應該由伺服器驗證，但為了簡單先在客戶端算
+    let dmg = Math.floor(getPlayerAttack() * (0.8 + Math.random() * 0.4));
+    dmg = Math.max(1, Math.floor(dmg - (onlineEnemy.def * 0.5)));
+
+    // 假裝扣除對手血量 (視覺用)
+    onlineEnemy.currentHp -= dmg;
+    updateEnemyHpUI();
+    logOnline(`你攻擊了對手，造成 ${dmg} 點傷害！`, "log-player");
+
+    // 傳送動作給伺服器
+    socket.emit('combat_action', {
+        roomId: currentRoomId,
+        actionType: 'attack',
+        damage: dmg
+    });
+
+    // 回合結束
+    isMyTurn = false;
+    updateOnlineButtons();
+}
+
+// 更新按鈕狀態
+function updateOnlineButtons() {
+    const btn = document.getElementById('btn-online-atk');
+    if (isMyTurn) {
+        btn.innerText = "⚔️ 輪到你了！點擊攻擊";
+        btn.disabled = false;
+        btn.style.background = "#e74c3c";
+    } else {
+        btn.innerText = "⏳ 對手思考中...";
+        btn.disabled = true;
+        btn.style.background = "#555";
+    }
+}
+
+// 更新對手血條
+function updateEnemyHpUI() {
+    const pct = Math.max(0, (onlineEnemy.currentHp / onlineEnemy.hp) * 100);
+    document.getElementById('online-enemy-hp-bar').style.width = `${pct}%`;
+    document.getElementById('online-enemy-hp-text').innerText = `HP: ${Math.max(0, onlineEnemy.currentHp)} / ${onlineEnemy.hp}`;
+}
+
+// 寫入線上 Log
+function logOnline(msg, style) {
+    const box = document.getElementById('online-log');
+    const div = document.createElement('div');
+    div.className = `log-line ${style}`;
+    div.innerText = msg;
+    box.appendChild(div);
+    box.scrollTop = box.scrollHeight;
+}
+
+// 結束戰鬥
+function endOnlineCombat(isWin) {
+    if (isWin) {
+        logOnline("🏆 對手倒下了！你獲得了勝利！", "log-win");
+        // 這裡可以加獎勵
+        player.money += 500;
+        log("線上對戰勝利：獲得 $500", "success");
+    } else {
+        logOnline("💀 你被擊敗了...", "log-die");
+    }
+
+    document.getElementById('btn-online-atk').style.display = 'none';
+    
+    // 3秒後回大廳
+    setTimeout(() => {
+        document.getElementById('online-combat-screen').style.display = 'none';
+        document.getElementById('online-lobby').style.display = 'block';
+        document.getElementById('queue-status').innerText = "";
+        document.getElementById('btn-online-atk').style.display = 'block';
+        saveGame();
+        updateUI();
+    }, 3000);
 }
 // 啟動遊戲
 initGame();
