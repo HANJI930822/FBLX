@@ -1619,5 +1619,61 @@ Object.values(itemData).forEach(item => {
         item.sell_price = Math.floor(item.cost * 0.7);
     }
 });
+const gymData = {
+    // --- 基礎訓練 (低消耗，穩紮穩打) ---
+    'lift_light': { 
+        name: "啞鈴舉重", 
+        cost: 5, 
+        time: 1,
+        stat: 'strength', 
+        baseGain: 1, 
+        desc: "基礎力量訓練。消耗 5 體力。" 
+    },
+    'sandbag': { 
+        name: "沙包練習", 
+        cost: 5, 
+        time: 1,
+        stat: 'speed', 
+        baseGain: 1, 
+        desc: "基礎速度訓練。消耗 5 體力。" 
+    },
+    'body_harden': { 
+        name: "抗打擊訓練", 
+        cost: 5, 
+        time: 1,
+        stat: 'defense', 
+        baseGain: 1, 
+        desc: "請人拿棍子打你。消耗 5 體力。增加防禦力。" 
+    },
+
+    // --- 進階訓練 (高消耗，高效率) ---
+    'tire_flip': { 
+        name: "翻巨型輪胎", 
+        cost: 20, 
+        time: 2,
+        stat: 'strength', 
+        baseGain: 5, 
+        desc: "高強度力量特訓！消耗 20 體力。" 
+    },
+    'shadow_boxing': { 
+        name: "極限閃避", 
+        cost: 20, 
+        time: 2,
+        stat: 'speed', 
+        baseGain: 5, 
+        desc: "高強度速度特訓！消耗 20 體力。" 
+    },
+    'iron_body': { 
+        name: "鐵布衫", 
+        cost: 20, 
+        time: 2,
+        stat: 'defense', 
+        baseGain: 5, 
+        desc: "高強度防禦特訓！消耗 20 體力。" 
+    }
+};
+// data.js
+
+// ★ 新增：拳館訓練項目
 
 let player = { ...defaultPlayerState };

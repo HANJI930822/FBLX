@@ -534,8 +534,37 @@ function gameTick() {
     const restTimer = document.getElementById('rest-timer');
     
 }
-
+function triggerMorningDecay() {
+    // 固定扣除數值 (可自行調整)
+    const hungerDrop = 25; 
+    const thirstDrop = 25;
+    
+    player.hunger = Math.max(0, player.hunger - hungerDrop);
+    player.thirst = Math.max(0, player.thirst - thirstDrop);
+    
+    log(`🌅 早安！早晨 5 點生理代謝啟動 (飽食 -${hungerDrop}, 口渴 -${thirstDrop})`, "normal");
+    
+    // 檢查是否因為這次扣除而死掉
+    checkSurvivalStatus(0); 
+}
 function passTime(hours) {
+    // 1. === 偵測是否跨越 5 AM ===
+    // 計算「絕對時間 (總小時數)」來判斷
+    // 公式：(天數-1)*24 + 小時
+    const startAbs = (player.day - 1) * 24 + player.time;
+    const endAbs = startAbs + hours;
+    
+    // 計算下一次 5 AM 發生的絕對時間點
+    // 邏輯：找出大於 startAbs 的第一個 (k * 24 + 5)
+    let k = Math.floor((startAbs - 5) / 24) + 1;
+    
+    // 如果這段時間內經歷了 5 AM (可能睡很久跨過好幾天)
+    while ((k * 24 + 5) <= endAbs) {
+        triggerMorningDecay(); // 觸發清晨代謝
+        k++;
+    }
+
+    // 2. === 原本的時間推進邏輯 ===
     player.time += hours;
     
     if (player.time >= 24) {
@@ -545,22 +574,24 @@ function passTime(hours) {
         updateWeather();
 
         initDailyChallenges();
+        
+        // 房屋自然消耗 (如果你保留這個機制的話)
         const currentHouse = houseData[player.house] || houseData['shack'];
         const mult = currentHouse.decayMult || 1.0;
-
         const hungerLoss = Math.floor(gameConfig.dailyHungerDecay * mult);
         const thirstLoss = Math.floor(gameConfig.dailyThirstDecay * mult);
-
         player.hunger -= hungerLoss;
         player.thirst -= thirstLoss;
         
         log(`=== 第 ${player.day} 天開始 ===`, "normal");
-        //log(`過了一夜，飢餓 -${hungerLoss}，口渴 -${thirstLoss}`, "fail");
-        checkSurvivalStatus();
+        checkSurvivalStatus(0);
     }
 
+    // 3. === 原本的持續消耗邏輯 (隨時間流逝) ===
     const currentWeather = weatherData[player.weather] || weatherData['sunny'];
     const wEffect = currentWeather.effect;
+    
+    // 基礎消耗：每小時 -2 飽食 / -3 口渴
     const baseHungerLoss = hours * 2;
     const baseThirstLoss = hours * 3;
     
@@ -662,29 +693,71 @@ function work() {
     updateUI();
 }
 
-function train(stat) {
+function train(trainingId) {
     if (player.hp <= 0) { log("在醫院無法訓練！", "fail"); return; }
     
+    const training = gymData[trainingId];
+    if (!training) return;
+
     // 檢查體力
-    if (player.energy >= gameConfig.trainCost) {
-        player.energy -= gameConfig.trainCost;
-        let gain = 1 + Math.floor(player[stat] * 0.01); 
-        player[stat] += gain;
+    if (player.energy >= training.cost) {
+        player.energy -= training.cost;
         
-        passTime(gameConfig.trainTime);
+        // 消耗時間
+        passTime(training.time);
+
+        // --- 計算成長 ---
+        const statName = training.stat; // strength, speed, defense
         
-        // ★ 修正：確認訓練成功後才計數
+        // 基礎成長公式：基礎值 + (當前屬性 * 1%)
+        // 這樣屬性越高，練得越快
+        let gain = training.baseGain + Math.floor(player[statName] * 0.01);
+        
+        // --- ★ 暴擊判定 (15% 機率) ---
+        const isCrit = Math.random() < 0.15;
+        let critMsg = "";
+        
+        if (isCrit) {
+            gain *= 3; // 暴擊 3 倍
+            critMsg = " 🔥 突破極限！效果翻倍！";
+            // 播放一個簡單的特效或震動 (這裡用 Log 呈現)
+        }
+
+        // 執行加成
+        player[statName] += gain;
+        
+        // 顯示訊息
+        const statLabel = {strength:'力量', speed:'速度', defense:'防禦'}[statName];
+        if (isCrit) {
+            log(`💪 ${training.name} 大成功！${statLabel} +${gain}${critMsg}`, "success");
+            showToast(`突破極限！${statLabel} +${gain}`);
+        } else {
+            log(`${training.name} 完成。${statLabel} +${gain}`, "normal");
+        }
+
+        // --- 每日任務與成就 ---
         if (player.daily_progress) {
             player.daily_progress.train_count = (player.daily_progress.train_count || 0) + 1;
-            if (stat === 'strength') player.daily_progress.train_str = (player.daily_progress.train_str || 0) + 1;
-            if (stat === 'speed') player.daily_progress.train_spd = (player.daily_progress.train_spd || 0) + 1;
+            
+            // 根據屬性紀錄
+            if (statName === 'strength') player.daily_progress.train_str = (player.daily_progress.train_str || 0) + 1;
+            if (statName === 'speed') player.daily_progress.train_spd = (player.daily_progress.train_spd || 0) + 1;
+            // 如果以後有防禦任務，這裡也可以加
+            
             checkDailyChallenges();
         }
         
-        log(`訓練結束 (+${gain} ${stat})`, "success");
+        // 檢查屬性成就
+        checkAchievements();
+        
         updateUI();
+        // 如果還在拳館面板，更新數值顯示
+        if (document.getElementById('gym').classList.contains('active')) {
+            renderGym();
+        }
+
     } else { 
-        log("體力不足！", "fail"); 
+        log("體力不足！去休息或喝瓶保力達B吧。", "fail"); 
     }
 }
 function renderCrimes() {
@@ -1312,7 +1385,55 @@ function equipItem(itemId) {
             document.getElementById('inv-empty-msg').style.display = 'block';
     }
 }
+function renderGym() {
+    const body = document.querySelector('#gym .panel-body');
+    if (!body) return;
+    
+    // 清空舊內容，重新建立結構
+    body.innerHTML = `
+        <p class="desc">付出汗水，換取力量。偶爾會突破極限 (3倍成長)！</p>
+        <div class="grid-2" id="gym-list"></div>
+    `;
 
+    const list = document.getElementById('gym-list');
+
+    // 顯示目前屬性
+    const statsDiv = document.createElement('div');
+    statsDiv.style.gridColumn = "1 / -1";
+    statsDiv.style.display = "flex";
+    statsDiv.style.justifyContent = "space-around";
+    statsDiv.style.marginBottom = "20px";
+    statsDiv.style.background = "#222";
+    statsDiv.style.padding = "10px";
+    statsDiv.style.borderRadius = "8px";
+    
+    statsDiv.innerHTML = `
+        <div style="color:#e74c3c">💪 力量: <span id="gym-str">${player.strength}</span></div>
+        <div style="color:#f1c40f">💨 速度: <span id="gym-spd">${player.speed}</span></div>
+        <div style="color:#3498db">🛡️ 防禦: <span id="gym-def">${player.defense}</span></div>
+    `;
+    body.insertBefore(statsDiv, list);
+
+    // 生成按鈕
+    Object.entries(gymData).forEach(([id, training]) => {
+        const card = document.createElement('div');
+        card.className = 'card text-center';
+        
+        let color = '#ccc';
+        if(training.stat === 'strength') color = '#e74c3c';
+        if(training.stat === 'speed') color = '#f1c40f';
+        if(training.stat === 'defense') color = '#3498db';
+
+        card.innerHTML = `
+            <h4 style="color:${color}">${training.name}</h4>
+            <p style="font-size:0.8rem; color:#aaa; height:40px;">${training.desc}</p>
+            <button class="action-btn" onclick="train('${id}')" style="background:${color}; width:100%;">
+                開始訓練
+            </button>
+        `;
+        list.appendChild(card);
+    });
+}
 function useItem(itemId) {
     // ★ 防呆：不能吃飾品
     const item = itemData[itemId];
@@ -1688,6 +1809,7 @@ function showPanel(panelId) {
     if (panelId === 'panel-ach-shop') {
         renderAchShop();
     }
+    if (panelId === 'gym') renderGym();
     if (panelId === 'skills') renderSkills();
 }
 // game.js
@@ -1914,7 +2036,7 @@ function updateUI() {
     // 9. 訓練數值顯示
     if(document.getElementById('gym-str')) document.getElementById('gym-str').innerText = player.strength;
     if(document.getElementById('gym-spd')) document.getElementById('gym-spd').innerText = player.speed;
-
+    if(document.getElementById('gym-def')) document.getElementById('gym-def').innerText = player.defense;
     // 10. 檢查成就與渲染面板
     checkAchievements();
     if (document.getElementById('achievements').classList.contains('active')) {
@@ -1928,6 +2050,9 @@ function updateUI() {
     }
     if (document.getElementById('estate').classList.contains('active')) {
         renderEstate();
+    }
+    if (document.getElementById('gym').classList.contains('active')) {
+        renderGym();
     }
 }
 // === 動態目標系統函數 ===
