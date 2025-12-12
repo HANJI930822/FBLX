@@ -314,7 +314,10 @@ function startCombat(enemyId) {
     document.getElementById('enemy-name').innerText = `${enemy.name} (Lv.${enemy.lvl})`;
     document.getElementById('battle-log').innerHTML = '';
     const leaveBtn = document.getElementById('btn-leave-fight');
+    const escapeBtn = document.getElementById('btn-escape');
     if (leaveBtn) leaveBtn.style.display = 'none';
+    if (leaveBtn) leaveBtn.style.display = 'none';  // 剛開始打，不能離開
+    if (escapeBtn) escapeBtn.style.display = 'block'; // 剛開始打，可以逃跑
     isFighting = true;
     simulateFight(enemy, enemyId);
 }
@@ -329,11 +332,10 @@ function endCombat() {
 async function simulateFight(originalEnemy, enemyId) {
     let enemyHp = originalEnemy.hp;
     const battleLog = document.getElementById('battle-log');
-    
-    // ★ 新增：回合計數器
     let rounds = 0; 
     
     const addLog = (msg, style) => {
+        if (!battleLog) return; // 防呆
         const div = document.createElement('div');
         div.className = `log-line ${style}`;
         div.innerText = msg;
@@ -346,45 +348,34 @@ async function simulateFight(originalEnemy, enemyId) {
     addLog(`=== 遭遇 ${originalEnemy.name} (HP: ${enemyHp}) ===`, "normal");
 
     while (enemyHp > 0 && player.hp > 0 && isFighting) {
-        
-        // ★ 新增：回合開始
         rounds++; 
-
         await wait(600);
         if (!isFighting) break;
 
-        // 玩家回合
+        // --- 玩家攻擊 ---
         let totalAtk = getPlayerAttack();
         let dmg = Math.floor(totalAtk * (0.8 + Math.random() * 0.4));
-
         let mySpd = getPlayerSpeed();
         let hitChance = 0.8 + (player.speed - originalEnemy.spd) * 0.01;
-
         if (player.weather === 'fog') hitChance -= 0.2;
-
         if (Math.random() > hitChance) dmg = 0; 
 
         if (dmg > 0) {
             enemyHp -= dmg;
             if (player.weapon) {
-            player.weapon_dura--;
-            // 檢查是否損壞
-            if (player.weapon_dura <= 0) {
-                const wName = itemData[player.weapon].name;
-                addLog(`💥 你的 ${wName} 壞掉了！`, "fail");
-                
-                // 移除裝備狀態
-                const brokenId = player.weapon;
-                player.weapon = null;
-                player.weapon_dura = 0;
-                
-                // 扣除背包數量
-                if (player.inventory[brokenId]) {
-                    player.inventory[brokenId]--;
-                    if (player.inventory[brokenId] <= 0) delete player.inventory[brokenId];
+                player.weapon_dura--;
+                if (player.weapon_dura <= 0) {
+                    const wName = itemData[player.weapon]?.name || "武器";
+                    addLog(`💥 你的 ${wName} 壞掉了！`, "fail");
+                    const brokenId = player.weapon;
+                    player.weapon = null;
+                    player.weapon_dura = 0;
+                    if (player.inventory[brokenId]) {
+                        player.inventory[brokenId]--;
+                        if (player.inventory[brokenId] <= 0) delete player.inventory[brokenId];
+                    }
                 }
             }
-        }
             addLog(`[R${rounds}] 你造成 ${dmg} 傷害 (敵人剩: ${Math.max(0, enemyHp)})`, "log-player");
         } else {
             addLog(`[R${rounds}] 你的攻擊揮空了！`, "log-enemy");
@@ -395,7 +386,7 @@ async function simulateFight(originalEnemy, enemyId) {
         await wait(400);
         if (!isFighting) break;
 
-        // 敵人回合
+        // --- 敵人攻擊 ---
         let totalDef = getPlayerDefense();
         let enemyDmg = Math.floor(originalEnemy.str * (0.8 + Math.random() * 0.4));
         enemyDmg = Math.max(1, Math.floor(enemyDmg - (totalDef * 0.5)));
@@ -406,99 +397,96 @@ async function simulateFight(originalEnemy, enemyId) {
         } else {
             player.hp = Math.max(0, player.hp - enemyDmg);
             if (player.armor) {
-            player.armor_dura--;
-            if (player.armor_dura <= 0) {
-                const aName = itemData[player.armor].name;
-                addLog(`💥 你的 ${aName} 被打爛了！`, "fail");
-                
-                const brokenId = player.armor;
-                player.armor = null;
-                player.armor_dura = 0;
-                
-                if (player.inventory[brokenId]) {
-                    player.inventory[brokenId]--;
-                    if (player.inventory[brokenId] <= 0) delete player.inventory[brokenId];
+                player.armor_dura--;
+                if (player.armor_dura <= 0) {
+                    const aName = itemData[player.armor]?.name || "防具";
+                    addLog(`💥 你的 ${aName} 被打爛了！`, "fail");
+                    const brokenId = player.armor;
+                    player.armor = null;
+                    player.armor_dura = 0;
+                    if (player.inventory[brokenId]) {
+                        player.inventory[brokenId]--;
+                        if (player.inventory[brokenId] <= 0) delete player.inventory[brokenId];
+                    }
                 }
             }
-        }
             addLog(`[R${rounds}] 敵人造成 ${enemyDmg} 傷害。`, "log-enemy");
             updateUI(); 
         }
     }
 
     if (!isFighting) return;
-
     await wait(500);
     
-    // ★ 修改：時間計算 (1 回合 = 0.5 小時)
     const timeCost = Math.ceil(rounds * 0.5);
     passTime(timeCost);
 
+    // ★★★ 勝利結算區 (加上 try-catch 防護) ★★★
     if (player.hp > 0) {
-        player.money += originalEnemy.reward;
-        player.stats.money_earned += originalEnemy.reward;
+        try {
+            // 1. 基礎獎勵
+            player.money += originalEnemy.reward;
+            if (player.stats) player.stats.money_earned += originalEnemy.reward;
+            if (player.stats) player.stats.fights_won++;
 
-        player.stats.fights_won++;
-
-        if (player.daily_progress) {
-        player.daily_progress.fights_won = (player.daily_progress.fights_won || 0) + 1;
-        if (!player.daily_progress.enemies_killed) player.daily_progress.enemies_killed = {};
-            player.daily_progress.enemies_killed[enemyId] = (player.daily_progress.enemies_killed[enemyId] || 0) + 1;
-        checkDailyChallenges();
-    }
-    checkMainQuests();
-
-    let expGain = originalEnemy.exp || 10;
-        
-    addLog(`=== 勝利 ===`, "log-win");
-    addLog(`獲得: $${originalEnemy.reward}, Exp +${expGain}`, "log-win");
-    addLog(`激戰 ${rounds} 回合，經過了 ${timeCost} 小時。`, "normal");
-    
-    if (enemyId) {
-        console.log('升級敵人:', enemyId);  // 除錯用
-        if (!player.enemyLevels[enemyId]) player.enemyLevels[enemyId] = 1;
-        player.enemyLevels[enemyId] += 1;
-        console.log('新等級:', player.enemyLevels[enemyId]);  // 除錯用
-    }
-
-    if (originalEnemy.loot && originalEnemy.loot.length > 0) {
-        addLog(`--- 掉落物品 ---`, "normal");
-        originalEnemy.loot.forEach(drop => {
-            // 判定是否掉落
-            if (Math.random() < drop.chance) {
-                const itemName = itemData[drop.item]?.name || drop.item;
-                const qty = drop.qty || 1;
-                
-                // 加入背包
-                player.inventory[drop.item] = (player.inventory[drop.item] || 0) + qty;
-                
-                addLog(`🎁 獲得：${itemName} x${qty}`, "log-win");
-                log(`戰利品：${itemName} x${qty}`, "success");
+            // 2. 每日任務更新
+            if (player.daily_progress) {
+                player.daily_progress.fights_won = (player.daily_progress.fights_won || 0) + 1;
+                if (!player.daily_progress.enemies_killed) player.daily_progress.enemies_killed = {};
+                player.daily_progress.enemies_killed[enemyId] = (player.daily_progress.enemies_killed[enemyId] || 0) + 1;
+                checkDailyChallenges();
             }
-        });
-    }
-        gainExp(expGain);
-        updateUI();
+            
+            // 3. 主線任務檢查 (最容易報錯的地方)
+            try { checkMainQuests(); } catch(e) { console.error("主線檢查錯誤:", e); }
 
-        if (window.currentEnemyId === 'boss') {
-             if (!player.achievements.includes('kill_boss')) {
-                 player.achievements.push('kill_boss');
-                 showToast('新秩序');
-                 log(`🏆 成就解鎖：新秩序`, "success");
-             }
+            let expGain = originalEnemy.exp || 10;
+            addLog(`=== 勝利 ===`, "log-win");
+            addLog(`獲得: $${originalEnemy.reward}, Exp +${expGain}`, "log-win");
+            
+            // 4. 敵人升級
+            if (enemyId) {
+                if (!player.enemyLevels) player.enemyLevels = {}; // 防呆
+                if (!player.enemyLevels[enemyId]) player.enemyLevels[enemyId] = 1;
+                player.enemyLevels[enemyId] += 1;
+            }
+
+            // 5. 掉落物處理
+            if (originalEnemy.loot && originalEnemy.loot.length > 0) {
+                addLog(`--- 掉落物品 ---`, "normal");
+                originalEnemy.loot.forEach(drop => {
+                    if (Math.random() < drop.chance) {
+                        // ★ 防呆：如果找不到物品名稱，顯示 fallback
+                        const itemInfo = itemData[drop.item];
+                        const itemName = itemInfo ? itemInfo.name : `未知物品(${drop.item})`;
+                        const qty = drop.qty || 1;
+                        
+                        player.inventory[drop.item] = (player.inventory[drop.item] || 0) + qty;
+                        
+                        addLog(`🎁 獲得：${itemName} x${qty}`, "log-win");
+                        log(`戰利品：${itemName} x${qty}`, "success");
+                    }
+                });
+            }
+            
+            gainExp(expGain);
+            updateUI();
+            checkAchievements();
+            saveGame();
+
+        } catch (err) {
+            console.error("戰鬥結算發生錯誤:", err);
+            addLog(`⚠️ 結算發生錯誤，但戰鬥已記錄。`, "fail");
         }
-
-        checkAchievements();
+        
+        // ★★★ 確保按鈕一定會顯示 (放在 try-catch 外面) ★★★
         const leaveBtn = document.getElementById('btn-leave-fight');
         const escapeBtn = document.getElementById('btn-escape'); 
-    
         if (leaveBtn) leaveBtn.style.display = 'block';
         if (escapeBtn) escapeBtn.style.display = 'none';
-        saveGame();
-        renderEnemies();
+
     } else {
         addLog(`=== 死亡 ===`, "log-die");
-        addLog(`你被擊殺了...`, "log-die");
         await wait(2000); 
         gameOver();
     }
@@ -1776,16 +1764,59 @@ function resetDailyChallenges() {
     generateDailyChallenges();
 }
 
-// 檢查並完成每日挑戰
+// 完成每日挑戰
 function checkDailyChallenges() {
     if (!player.daily_challenges || player.daily_challenges.length === 0) return;
     
     player.daily_challenges.forEach(mission => {
-        // 跳過已完成的 (檢查 ID 是否在完成列表中)
+        // 跳過已完成的
         if (player.daily_completed.includes(mission.id)) return;
         
-        // ★ 呼叫任務物件內建的 check 函數
-        if (mission.check(player, mission)) {
+        let currentVal = 0;
+        
+        // ★ 核心修復：手動判斷任務類型，不呼叫 mission.check()
+        switch (mission.type) {
+            // --- 新版隨機任務 ---
+            case 'hunt_specific':
+                currentVal = player.daily_progress.enemies_killed?.[mission.targetId] || 0;
+                break;
+            case 'crime_specific':
+                currentVal = player.daily_progress.crimes_specific?.[mission.targetId] || 0;
+                break;
+            case 'consume_specific':
+                currentVal = player.daily_progress.items_consumed?.[mission.targetId] || 0;
+                break;
+            case 'earn': // 賺錢
+                currentVal = player.daily_progress.money_earned || 0;
+                break;
+            case 'train_stat': // 訓練
+                const key = mission.targetStat === 'strength' ? 'train_str' : 'train_spd';
+                currentVal = player.daily_progress[key] || 0;
+                break;
+                
+            // --- 舊版任務相容 (防止舊存檔報錯) ---
+            case 'combat':
+                currentVal = player.daily_progress.fights_won || 0;
+                break;
+            case 'work':
+                currentVal = player.daily_progress.work_count || 0;
+                break;
+            case 'crime': // 舊版通用犯罪
+                currentVal = player.daily_progress.crimes_count || 0;
+                break;
+            case 'eat': // 舊版通用吃喝
+                currentVal = player.daily_progress.food_eaten || 0;
+                break;
+            case 'spend':
+                currentVal = player.daily_progress.money_spent || 0;
+                break;
+            case 'train':
+                currentVal = player.daily_progress.train_count || 0;
+                break;
+        }
+
+        // 檢查是否達標
+        if (currentVal >= mission.targetVal) {
             player.daily_completed.push(mission.id);
             
             // 給予獎勵
@@ -1803,7 +1834,8 @@ function checkDailyChallenges() {
             }
             if (mission.reward.item) {
                 player.inventory[mission.reward.item] = (player.inventory[mission.reward.item] || 0) + 1;
-                msg += ` (獲得 ${itemData[mission.reward.item].name})`;
+                const itemName = itemData[mission.reward.item]?.name || "物品";
+                msg += ` (獲得 ${itemName})`;
             }
             
             log(msg, "success");
@@ -1814,6 +1846,8 @@ function checkDailyChallenges() {
                 log("🎉 今日全數達成！額外獎勵 +$500", "success");
                 player.money += 500;
             }
+            
+            updateUI(); // 更新介面以顯示綠色勾勾
         }
     });
 }

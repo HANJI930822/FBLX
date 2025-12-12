@@ -52,7 +52,7 @@ const defaultPlayerState = {
     perm_buffs: {},              // 永久Buff
     title: null,                 // 當前稱號
     
-    stats: { /* ... */ },
+    //stats: { /* ... */ },
   achievements: []
 };
 
