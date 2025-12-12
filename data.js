@@ -10,7 +10,37 @@ const defaultPlayerState = {
       driving: 0,     // 駕駛
       stealth: 0      // 潛行
   },
+  market_trends: {
+      'microchip': 1.0,
+      'synthetic_drug': 1.0,
+      'rare_metal': 1.0,
+      'luxury_watch': 1.0,
+      'ancient_relic': 1.0
+  },
+  // ★ 新增：動態目標系統
+daily_challenges: [],        // 今日挑戰（3個ID）
+    daily_progress: {            // 今日進度追蹤
+        train_count: 0,
+        work_count: 0,
+        fights_won: 0,
+        crimes_count: 0,
+        food_eaten: 0,
+        items_bought: 0
+    },
+    // ★ 新增：統計數據 (用來判斷成就)
+  stats: {
+      fights_won: 0,      // 戰鬥勝利次數
+      crimes_success: 0,  // 犯罪成功次數
+      times_worked: 0,    // 工作次數
+      items_bought: 0,    // 購買物品次數
+      money_earned: 0,    // 總賺取金錢 (累積)
+      food_eaten: 0,      // 吃食物次數
+      days_lived: 0       // 存活天數 (跟 day 連動)
+  },
+    daily_completed: [],   
   job: null, 
+  location: 'night_city', 
+  bag_size: 20,
   weather: 'sunny',
   weapon: null, 
   waapon_dura: 0,
@@ -28,27 +58,8 @@ const defaultPlayerState = {
   last_tick: Date.now(),
   inventory: {},
   enemyLevels: {},
-  // ★ 新增：統計數據 (用來判斷成就)
-  stats: {
-      fights_won: 0,      // 戰鬥勝利次數
-      crimes_success: 0,  // 犯罪成功次數
-      times_worked: 0,    // 工作次數
-      items_bought: 0,    // 購買物品次數
-      money_earned: 0,    // 總賺取金錢 (累積)
-      food_eaten: 0,      // 吃食物次數
-      days_lived: 0       // 存活天數 (跟 day 連動)
-  },
-    // ★ 新增：動態目標系統
-    daily_challenges: [],        // 今日挑戰（3個ID）
-    daily_progress: {            // 今日進度追蹤
-        train_count: 0,
-        work_count: 0,
-        fights_won: 0,
-        crimes_count: 0,
-        food_eaten: 0,
-        items_bought: 0
-    },
-    daily_completed: [],         // 今日已完成的挑戰ID
+  
+          // 今日已完成的挑戰ID
     last_daily_reset: 1,         // 上次重置每日挑戰的日期
     
     main_quests_completed: [],   // 已完成的主線任務ID
@@ -79,7 +90,76 @@ const gameConfig = {
   dailyHungerDecay: 0, 
   dailyThirstDecay: 0 
 };
+// data.js
 
+const randomEvents = [
+    {
+        id: 'find_money',
+        text: "你在路邊的自動販賣機底下發現了別人遺落的零錢！",
+        chance: 0.1, // 10% 機率
+        effect: (p) => { 
+            const amt = Math.floor(Math.random() * 50) + 10;
+            p.money += amt;
+            return `意外之財：獲得 $${amt}`;
+        }
+    },
+    {
+        id: 'bad_food',
+        text: "你肚子突然一陣劇痛...昨天的便當似乎不太乾淨。",
+        chance: 0.05,
+        effect: (p) => {
+            p.hp = Math.max(1, p.hp - 10);
+            p.hunger = Math.max(0, p.hunger - 20);
+            return `食物中毒：HP -10, 飽食 -20`;
+        }
+    },
+    {
+        id: 'inspiration',
+        text: "你在上廁所時突然靈光一閃，想通了一些事情。",
+        chance: 0.05,
+        effect: (p) => {
+            const exp = 50;
+            p.exp += exp;
+            // 隨機增加一點技能經驗
+            const skills = Object.keys(p.skills);
+            const rndSkill = skills[Math.floor(Math.random() * skills.length)];
+            p.skills[rndSkill] += 20;
+            return `靈感湧現：經驗 +${exp}, ${rndSkill} 經驗 +20`;
+        }
+    },
+    {
+        id: 'police_check',
+        text: "巡邏警察攔住了你盤查身分...",
+        chance: 0.03,
+        effect: (p) => {
+            // 檢查身上是否有違禁品 (標籤為 loot 且價格高的通常是贓物，或直接檢查 ID)
+            const contraband = ['drugs', 'dirty_money', 'stolen_wallet'];
+            let hasContraband = false;
+            
+            contraband.forEach(item => {
+                if (p.inventory[item] > 0) {
+                    p.inventory[item] = 0; // 沒收
+                    hasContraband = true;
+                }
+            });
+
+            if (hasContraband) {
+                p.money = Math.max(0, p.money - 500);
+                return `被搜出違禁品！物品被沒收，並罰款 $500。`;
+            } else {
+                return `你身上很乾淨，警察放你走了。`;
+            }
+        }
+    },
+    {
+        id: 'pickpocket_fail',
+        text: "有人試圖偷你的錢包，但被你發現並狠狠瞪了回去。",
+        chance: 0.08,
+        effect: (p) => {
+            return `有驚無險。`;
+        }
+    }
+];
 const jobData = {
     // --- 生存系 ---
     'hobo': { 
@@ -739,7 +819,33 @@ const itemData = {
     type: 'weapon',
     value: 200,
     desc: '攻+200。只有真正的成就大師才能持有的神兵。'
-}
+},
+// --- 📦 走私貨物 (Trade Goods) ---
+    'microchip': {
+        name: '高階晶片', cost: 200, category: 'trade', type: 'trade',
+        desc: '科技產品。在高科技區很便宜，但在貧民窟是稀有貨。',
+        weight: 1
+    },
+    'synthetic_drug': {
+        name: '合成藥劑', cost: 150, category: 'trade', type: 'trade',
+        desc: '令人上癮的粉末。管制嚴格的區域價格很高。',
+        weight: 1
+    },
+    'rare_metal': {
+        name: '稀有礦石', cost: 300, category: 'trade', type: 'trade',
+        desc: '工業原料。重工業區特產。',
+        weight: 1
+    },
+    'luxury_watch': {
+        name: '名牌贗品', cost: 100, category: 'trade', type: 'trade',
+        desc: '看起來像真的一樣。在商業區很受歡迎。',
+        weight: 1
+    },
+    'ancient_relic': {
+        name: '古文明遺物', cost: 1000, category: 'trade', type: 'trade',
+        desc: '從廢墟挖出來的。收藏家願意出高價。',
+        weight: 1
+    },
 };
 
 const crimeData = {
@@ -1672,8 +1778,72 @@ const gymData = {
         desc: "高強度防禦特訓！消耗 20 體力。" 
     }
 };
-// data.js
-
-// ★ 新增：拳館訓練項目
-
+// ★ 世界地圖與市場資料
+const locationData = {
+    'night_city': {
+        name: "不夜城 (Night City)",
+        desc: "我們的起點。魚龍混雜的混亂都市。",
+        travelCost: 0,
+        travelTime: 0,
+        // 市場價格倍率 (1.0 = 原價, <1 = 便宜, >1 = 貴)
+        market: {
+            'microchip': 1.0,
+            'synthetic_drug': 1.0,
+            'rare_metal': 1.0,
+            'luxury_watch': 1.0,
+            'ancient_relic': 1.0
+        },
+        npcs: [
+            { id: 'info_broker', name: '情報販子', dialog: ["想賺錢？把這裡的【名牌贗品】帶去【富人區】賣，保證翻倍。", "最近警察抓得嚴，小心點。"] }
+        ]
+    },
+    'neo_tokyo': {
+        name: "新東京 (Tech Zone)",
+        desc: "高科技特區。充滿了霓虹燈與生化人。",
+        travelCost: 500,
+        travelTime: 2,
+        market: {
+            'microchip': 0.6,      // 產地，超便宜
+            'synthetic_drug': 1.5, // 管制嚴，貴
+            'rare_metal': 1.2,
+            'luxury_watch': 0.8,
+            'ancient_relic': 1.5   // 科技人喜歡古董
+        },
+        npcs: [
+            { id: 'cyber_doc', name: '義體醫生', dialog: ["你的身體太脆弱了...要不要換成機械的？", "這裡的晶片就像垃圾一樣多。"] }
+        ]
+    },
+    'slums': {
+        name: "舊城貧民窟 (Slums)",
+        desc: "被遺棄的廢墟。法律在這裡不存在。",
+        travelCost: 200,
+        travelTime: 3,
+        market: {
+            'microchip': 1.8,      // 缺乏科技，貴
+            'synthetic_drug': 0.7, // 產地，便宜
+            'rare_metal': 0.5,     // 拾荒者挖的，便宜
+            'luxury_watch': 1.2,
+            'ancient_relic': 0.8
+        },
+        npcs: [
+            { id: 'junkie', name: '瘋癲的老人', dialog: ["嘿嘿...我挖到了寶貝...金閃閃的石頭...", "給我藥...給我藥..."] }
+        ]
+    },
+    'high_end_district': {
+        name: "天空富人區 (Sky City)",
+        desc: "漂浮在空中的樂園。只有富豪能進入。",
+        travelCost: 2000,
+        travelTime: 4,
+        market: {
+            'microchip': 1.2,
+            'synthetic_drug': 2.0, // 富人尋求刺激，超貴
+            'rare_metal': 1.5,
+            'luxury_watch': 2.5,   // 喜歡奢侈品(即使是假的)
+            'ancient_relic': 1.8
+        },
+        npcs: [
+            { id: 'rich_man', name: '傲慢的富豪', dialog: ["空氣真好，不像下面那些豬玀吸的廢氣。", "你有什麼新奇的玩意兒嗎？"] }
+        ]
+    }
+};
 let player = { ...defaultPlayerState };

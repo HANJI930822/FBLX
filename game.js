@@ -55,12 +55,18 @@ function initGame() {
             if (!player.ach_shop_purchased) player.ach_shop_purchased = [];
             if (!player.perm_buffs) player.perm_buffs = {};
             if (!player.enemyLevels) player.enemyLevels = {};
-            if (!player.weather) {
-                player.weather = 'sunny';
-                updateWeather(); // 如果是舊存檔，隨機給一個天氣
-                }
-            if (!player.skills) {
-                player.skills = { lockpicking: 0, hacking: 0, driving: 0, stealth: 0 };
+            if (!player.weather) {player.weather = 'sunny'; updateWeather();}
+            if (!player.skills) {player.skills = { lockpicking: 0, hacking: 0, driving: 0, stealth: 0 };}
+            if (!player.location) player.location = 'night_city';
+            if (!player.bag_size) player.bag_size = 20;
+            if (!player.market_trends) {
+                    player.market_trends = {
+                        'microchip': 1.0,
+                        'synthetic_drug': 1.0,
+                        'rare_metal': 1.0,
+                        'luxury_watch': 1.0,
+                        'ancient_relic': 1.0
+                    };
                 }
             initDailyChallenges();
             player.time = Math.floor(player.time);
@@ -70,6 +76,7 @@ function initGame() {
                 if (q && q.stage > maxCompletedStage) {
                     maxCompletedStage = q.stage;
                 }
+                
             });
 
             // 設定當前頁面為「最大已完成章節」或「下一章」(如果該章節還沒全解完，就停在那章，如果全解完就跳下一章)
@@ -563,7 +570,12 @@ function passTime(hours) {
         triggerMorningDecay(); // 觸發清晨代謝
         k++;
     }
-
+    if (Math.random() < 0.1) { // 總觸發機率 10%
+        triggerRandomEvent();
+    }
+    for(let i=0; i<hours; i++) {
+        updateMarketTrends();
+    }
     // 2. === 原本的時間推進邏輯 ===
     player.time += hours;
     
@@ -602,7 +614,27 @@ function passTime(hours) {
 
     updateUI();
 }
-
+function triggerRandomEvent() {
+    // 1. 篩選幸運兒
+    const roll = Math.random();
+    let cumulative = 0;
+    
+    // 簡單權重計算，或是直接隨機抽一個
+    const event = randomEvents[Math.floor(Math.random() * randomEvents.length)];
+    
+    // 2. 再次檢定該事件的獨立機率 (這樣可以設計超稀有事件)
+    if (Math.random() < event.chance) {
+        const resultMsg = event.effect(player);
+        
+        // 顯示像 Toast 或 Log
+        log(`⚡ [隨機事件] ${event.text}`, "normal");
+        if (resultMsg) {
+            log(`➥ 結果：${resultMsg}`, "fail"); // 用 fail 顏色比較醒目，或自己加 css
+            if(typeof showToast === 'function') showToast("觸發隨機事件！");
+        }
+        updateUI();
+    }
+}
 function checkSurvivalStatus(hoursPassed) {
     // --- A. 飢餓檢查 ---
     if (player.hunger <= 0) {
@@ -1811,6 +1843,7 @@ function showPanel(panelId) {
     }
     if (panelId === 'gym') renderGym();
     if (panelId === 'skills') renderSkills();
+    if (panelId === 'travel') renderTravel();
 }
 // game.js
 
@@ -2951,6 +2984,247 @@ function endOnlineCombat(isWin) {
         saveGame();
         updateUI();
     }, 3000);
+}
+// === 旅行與走私系統 ===
+function updateMarketTrends() {
+    // 遍歷所有趨勢
+    Object.keys(player.market_trends).forEach(itemId => {
+        // 舊趨勢
+        const oldTrend = player.market_trends[itemId];
+        
+        // 波動幅度：-10% ~ +10%
+        const change = 0.9 + Math.random() * 0.2; 
+        
+        // 計算新趨勢
+        let newTrend = oldTrend * change;
+        
+        // 設定上下限 (避免價格無限膨脹或歸零)
+        // 最低 0.5 倍，最高 2.5 倍
+        newTrend = Math.max(0.5, Math.min(2.5, newTrend));
+        
+        // 寫回狀態
+        player.market_trends[itemId] = parseFloat(newTrend.toFixed(2));
+    });
+    
+    // 隨機觸發「市場新聞」 (5% 機率某商品暴漲或暴跌)
+    if (Math.random() < 0.05) {
+        const items = Object.keys(player.market_trends);
+        const targetId = items[Math.floor(Math.random() * items.length)];
+        const isBoom = Math.random() > 0.5;
+        
+        if (isBoom) {
+            player.market_trends[targetId] *= 1.5; // 暴漲
+            log(`📈 [市場快訊] 需求激增！${itemData[targetId].name} 價格暴漲！`, "success");
+        } else {
+            player.market_trends[targetId] *= 0.6; // 崩盤
+            log(`📉 [市場快訊] 供應過剩！${itemData[targetId].name} 價格崩盤！`, "fail");
+        }
+    }
+}
+function renderTravel() {
+    const locId = player.location || 'night_city';
+    const locData = locationData[locId];
+    
+    // 1. 基本資訊與背包
+    document.getElementById('current-loc-name').innerText = locData.name;
+    document.getElementById('current-loc-desc').innerText = locData.desc;
+    
+    const currentItems = Object.values(player.inventory).reduce((a, b) => a + b, 0);
+    const bagColor = currentItems >= player.bag_size ? '#e74c3c' : '#2ecc71';
+    document.getElementById('bag-usage').innerHTML = `<span style="color:${bagColor}">${currentItems}</span> / ${player.bag_size}`;
+
+    // 2. NPC (保持不變)
+    const npcList = document.getElementById('npc-list');
+    npcList.innerHTML = '';
+    document.getElementById('npc-dialog-box').style.display = 'none';
+    if (locData.npcs) {
+        locData.npcs.forEach(npc => {
+            const btn = document.createElement('button');
+            btn.className = 'filter-btn';
+            btn.innerText = `💬 ${npc.name}`;
+            btn.onclick = () => talkToNPC(npc);
+            npcList.appendChild(btn);
+        });
+    }
+
+    // 3. ★ 黑市渲染 (加入漲跌顯示)
+    const marketList = document.getElementById('market-list');
+    marketList.innerHTML = '';
+    
+    // 防呆：如果舊存檔沒有 market_trends，初始化它
+    if (!player.market_trends) {
+        player.market_trends = { 'microchip':1, 'synthetic_drug':1, 'rare_metal':1, 'luxury_watch':1, 'ancient_relic':1 };
+    }
+
+    Object.entries(itemData).forEach(([itemId, item]) => {
+        if (item.category !== 'trade') return;
+
+        // A. 計算價格
+        const localMult = locData.market[itemId] || 1.0; // 當地基本倍率 (例如東京晶片便宜)
+        const globalTrend = player.market_trends[itemId] || 1.0; // 全球浮動 (例如現在晶片大漲)
+        
+        // 最終價格 = 原價 * 當地 * 全球
+        const finalPrice = Math.floor(item.cost * localMult * globalTrend);
+        
+        // B. 漲跌幅判斷 (比較 當前全球趨勢 vs 1.0)
+        // 這裡顯示的是「全球行情」對價格的影響
+        let trendIcon = '';
+        let trendColor = '#aaa';
+        let trendText = '';
+
+        if (globalTrend > 1.05) { // 漲超過 5%
+            trendIcon = '📈';
+            trendColor = '#e74c3c'; // 紅色代表漲 (台股習慣) / 或綠色看你習慣
+            trendText = `(+${Math.floor((globalTrend-1)*100)}%)`;
+        } else if (globalTrend < 0.95) { // 跌超過 5%
+            trendIcon = '📉';
+            trendColor = '#2ecc71'; // 綠色代表跌
+            trendText = `(${Math.floor((globalTrend-1)*100)}%)`;
+        } else {
+            trendIcon = '➖';
+            trendText = '(持平)';
+        }
+
+        // C. 顯示
+        const card = document.createElement('div');
+        card.className = 'card';
+        card.innerHTML = `
+            <div style="display:flex; justify-content:space-between;">
+                <h4 style="margin:0;">${item.name}</h4>
+                <div style="text-align:right;">
+                    <span style="font-size:1.1rem; font-weight:bold; color:#fff;">$${finalPrice}</span>
+                    <br>
+                    <small style="color:${trendColor};">${trendIcon} ${trendText}</small>
+                </div>
+            </div>
+            <div style="display:flex; justify-content:space-between; margin:5px 0; font-size:0.8rem; color:#888;">
+                <span>原價: $${item.cost}</span>
+                <span>當地行情: x${localMult}</span>
+            </div>
+            
+            <div style="display:flex; gap:5px; margin-top:10px;">
+                <button class="action-btn" style="flex:1; background:#27ae60;" onclick="trade('buy', '${itemId}', ${finalPrice})">
+                    買入
+                </button>
+                <button class="action-btn" style="flex:1; background:#e67e22;" onclick="trade('sell', '${itemId}', ${finalPrice})">
+                    賣出 (持:${player.inventory[itemId]||0})
+                </button>
+            </div>
+        `;
+        marketList.appendChild(card);
+    });
+
+    // 4. 旅行列表 (保持不變)
+    const travelList = document.getElementById('travel-list');
+    travelList.innerHTML = '';
+    Object.entries(locationData).forEach(([id, data]) => {
+        if (id === locId) return;
+        const card = document.createElement('div');
+        card.className = 'card';
+        card.style.borderColor = '#e84393';
+        card.innerHTML = `
+            <div style="display:flex; justify-content:space-between;">
+                <h4 style="margin:0;">${data.name}</h4>
+                <span>✈️ $${data.travelCost}</span>
+            </div>
+            <p style="font-size:0.8rem; color:#aaa;">${data.desc}</p>
+            <button class="action-btn" style="width:100%; margin-top:10px; background:#e84393;" 
+                onclick="travelTo('${id}')">
+                出發 (耗時 ${data.travelTime}hr)
+            </button>
+        `;
+        travelList.appendChild(card);
+    });
+}
+
+// NPC 對話
+function talkToNPC(npc) {
+    const box = document.getElementById('npc-dialog-box');
+    const text = npc.dialog[Math.floor(Math.random() * npc.dialog.length)];
+    box.style.display = 'block';
+    box.innerHTML = `<strong style="color:#f1c40f">${npc.name}:</strong> "${text}"`;
+}
+
+// 買賣邏輯 (黑市專用)
+function trade(action, itemId, price) {
+    if (action === 'buy') {
+        // 檢查錢
+        if (player.money < price) { log("金錢不足！", "fail"); return; }
+        
+        // 檢查背包容量 (計算所有物品總數)
+        const currentItems = Object.values(player.inventory).reduce((a, b) => a + b, 0);
+        if (currentItems >= player.bag_size) {
+            log("背包已滿！無法攜帶更多貨物。", "fail");
+            return;
+        }
+
+        player.money -= price;
+        player.inventory[itemId] = (player.inventory[itemId] || 0) + 1;
+        player.stats.items_bought++;
+        
+        // 紀錄新品庫存 (這裡簡化，貿易品不分新舊，或者是全算新品)
+        // player.new_stock[itemId] = ... (如果需要的話)
+        
+        log(`買入 ${itemData[itemId].name}，花費 $${price}`, "success");
+    } 
+    else if (action === 'sell') {
+        if (!player.inventory[itemId] || player.inventory[itemId] <= 0) {
+            log("你沒有這個貨物！", "fail");
+            return;
+        }
+        
+        player.money += price;
+        player.inventory[itemId]--;
+        if (player.inventory[itemId] <= 0) delete player.inventory[itemId];
+        
+        // 貿易獲利計入統計
+        const profit = price - itemData[itemId].cost; // 簡單估算
+        if(profit > 0) player.stats.money_earned += profit;
+
+        log(`賣出 ${itemData[itemId].name}，獲得 $${price}`, "success");
+    }
+    
+    updateUI();
+    renderTravel(); // 重整介面更新庫存顯示
+}
+
+// 旅行邏輯
+function travelTo(targetId) {
+    const target = locationData[targetId];
+    
+    if (player.money < target.travelCost) { log("旅費不足！", "fail"); return; }
+    
+    // 扣錢
+    player.money -= target.travelCost;
+    
+    // 扣時間 (如果體力不夠可能無法旅行？這裡先只扣時間)
+    log(`搭上前往 ${target.name} 的班機...`, "normal");
+    passTime(target.travelTime);
+    
+    // 移動
+    player.location = targetId;
+    
+    log(`抵達 ${target.name}！`, "success");
+    
+    // 隨機事件：旅行可能遇到海關檢查 (5% 機率)
+    if (Math.random() < 0.05) {
+        // 檢查違禁品
+        const contraband = ['synthetic_drug']; // 設定哪些是違禁品
+        let hasBadStuff = false;
+        contraband.forEach(id => { if(player.inventory[id] > 0) hasBadStuff = true; });
+        
+        if (hasBadStuff) {
+            log(`👮 海關檢查！發現違禁品！貨物被沒收並罰款 $1000。`, "fail");
+            player.money = Math.max(0, player.money - 1000);
+            contraband.forEach(id => { delete player.inventory[id]; });
+        }
+    }
+
+    updateUI();
+    renderTravel();
+    
+    // 如果旅行後還是在旅行面板，要滾動到最上面
+    document.getElementById('main-content').scrollTop = 0;
 }
 // 啟動遊戲
 initGame();

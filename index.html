@@ -192,6 +192,9 @@
           <button onclick="openInventory()" class="nav-btn" style="color: #00d2d3;">
             🎒 背包
           </button>
+          <button onclick="showPanel('travel')" class="nav-btn" style="color: #e84393;">
+            ✈️ 世界旅行
+          </button>
           <button onclick="showPanel('online-pvp')" class="nav-btn" style="color: #0984e3;">
            🌐 線上對戰 (Beta)
           </button>
@@ -458,6 +461,34 @@
               </div>
             </div>
           </div>
+
+          <div id="travel" class="panel">
+    <div class="panel-header">世界旅行 & 黑市</div>
+    <div class="panel-body">
+        
+        <div class="card" style="margin-bottom: 20px; border-left: 5px solid #e84393; background: linear-gradient(45deg, #222, #1a1a1a);">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <h2 style="margin:0;">📍 <span id="current-loc-name">不夜城</span></h2>
+                <small style="color:#aaa;">背包容量: <span id="bag-usage">0/20</span></small>
+            </div>
+            <p id="current-loc-desc" style="color: #bbb; margin-top: 10px;">...</p>
+            
+            <div id="npc-area" style="margin-top: 15px; border-top: 1px dashed #444; padding-top: 10px;">
+                <h4 style="margin:0 0 10px 0; color:#00cec9;">👥 當地居民</h4>
+                <div id="npc-list" style="display:flex; gap:10px; flex-wrap:wrap;"></div>
+                <div id="npc-dialog-box" style="display:none; background:#333; padding:10px; border-radius:4px; margin-top:10px; font-style:italic; color:#fff;"></div>
+            </div>
+        </div>
+
+        <h3 style="color: #f1c40f;">📦 黑市交易所 (低買高賣)</h3>
+        <div id="market-list" class="grid-2"></div>
+
+        <hr style="border:0; border-top:1px solid #333; margin: 30px 0;">
+
+        <h3 style="color: #3498db;">✈️ 前往其他城市</h3>
+        <div id="travel-list" class="grid-2"></div>
+    </div>
+</div>
 
           <div id="jobs" class="panel">
             <div class="panel-header">我的職業</div>
